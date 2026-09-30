@@ -1,0 +1,18 @@
+# Development overrides, applied automatically by `docker compose up`.
+# Production / demo deploys should run `docker compose -f docker-compose.yml up`
+# so these do not apply.
+services:
+  web:
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py runserver 0.0.0.0:8000"
+    environment:
+      DJANGO_DEBUG: "1"
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
