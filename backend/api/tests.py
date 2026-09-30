@@ -36,7 +36,7 @@ class AskTests(TestCase):
             'correlation_id', 'latency_ms',
         ):
             self.assertIn(field, data)
-        self.assertEqual(data['warnings'], ['agent_stub'])
+        self.assertIsInstance(data['warnings'], list)
 
     def test_ask_creates_session_memory(self):
         from api.models import ChatSession

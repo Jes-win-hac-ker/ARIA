@@ -5,9 +5,12 @@ decisions. Every final response must pass Pydantic validation before it
 reaches the user (see api.schemas.AgentResponse).
 """
 from .guardrails import GuardrailResult, STANDARD_REFUSAL_MESSAGE, check_preflight_guardrail
+from .router import calculate_math, route_and_execute
 
 __all__ = [
     "GuardrailResult",
     "STANDARD_REFUSAL_MESSAGE",
+    "calculate_math",
     "check_preflight_guardrail",
+    "route_and_execute",
 ]

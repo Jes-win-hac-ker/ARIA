@@ -1,7 +1,7 @@
 """Pre-flight regex guardrails for ARIA (AGENTS.md sections 2, 3, 11).
 
-Short-circuits buy/sell/hold advice, market timing, and price predictions
-BEFORE any LLM (Gemini) invocation occurs.
+Short-circuits buy/sell/hold advice, market timing, price predictions,
+and semantic jailbreaks BEFORE any LLM (Gemini) invocation occurs.
 """
 from dataclasses import dataclass
 import re
@@ -13,7 +13,24 @@ STANDARD_REFUSAL_MESSAGE = (
 )
 
 _ADVICE_PATTERNS = [
-    # 1. Buy recommendations
+    # 1. Jailbreak / DAN / Roleplay framing seeking advice or predictions
+    (
+        re.compile(
+            r"\b(?:ignore\s+(?:all\s+)?(?:previous\s+)?instructions|dan\s+mode|unrestricted|jailbreak)\b",
+            re.IGNORECASE,
+        ),
+        "jailbreak_attempt",
+    ),
+    (
+        re.compile(
+            r"\b(?:roleplay|pretend|imagine|hypothetical\s+scenario|fictional\s+world)\b.*"
+            r"\b(?:buy|sell|hold|invest|stock|crypto|price|forecast|target)\b",
+            re.IGNORECASE,
+        ),
+        "jailbreak_attempt",
+    ),
+
+    # 2. Buy recommendations
     (
         re.compile(
             r"\b(?:should\s+i|shall\s+i|can\s+i|ought\s+to|is\s+it\s+(?:a\s+)?(?:good|right)\s+time\s+to|would\s+you\s+recommend)\s+"
@@ -24,20 +41,24 @@ _ADVICE_PATTERNS = [
     ),
     (
         re.compile(
-            r"\b(?:what|which)\s+(?:stock|share|equity|crypto|mutual\s+fund)s?\s+(?:should\s+i|to)\s+(?:buy|invest\s+in|purchase)\b",
+            r"\b(?:what|which|any)\s+(?:multibagger\s+|penny\s+)?(?:stock|share|equity|crypto|mutual\s+fund)s?\s+(?:should\s+i|to)\s+(?:buy|invest\s+in|purchase)\b",
             re.IGNORECASE,
         ),
         "buy_recommendation",
     ),
     (
         re.compile(
-            r"\b(?:what\s+is\s+the\s+)?best\s+(?:stocks?|shares?|mutual\s+funds?|etfs?|funds?|equit(?:y|ies))\s+to\s+(?:buy|invest\s+in|purchase)(?:\s+now)?\b",
+            r"\b(?:what\s+is\s+the\s+)?(?:best|top)\s+(?:multibagger\s+|penny\s+)?(?:stocks?|shares?|mutual\s+funds?|etfs?|funds?|equit(?:y|ies))\s+to\s+(?:buy|invest\s+in|purchase)(?:\s+now)?\b",
             re.IGNORECASE,
         ),
         "buy_recommendation",
     ),
+    (
+        re.compile(r"\bbuy\s+recommendation\b", re.IGNORECASE),
+        "buy_recommendation",
+    ),
 
-    # 2. Sell / Exit recommendations
+    # 3. Sell / Exit recommendations
     (
         re.compile(
             r"\b(?:should\s+i|shall\s+i|can\s+i|ought\s+to|is\s+it\s+(?:a\s+)?(?:good|right)\s+time\s+to|time\s+to)\s+"
@@ -53,8 +74,12 @@ _ADVICE_PATTERNS = [
         ),
         "sell_recommendation",
     ),
+    (
+        re.compile(r"\bsell\s+recommendation\b", re.IGNORECASE),
+        "sell_recommendation",
+    ),
 
-    # 3. Hold recommendations
+    # 4. Hold recommendations
     (
         re.compile(
             r"\b(?:should\s+i|shall\s+i|can\s+i|ought\s+to|do\s+i)\s+(?:hold|keep|retain)\b",
@@ -64,13 +89,13 @@ _ADVICE_PATTERNS = [
     ),
     (
         re.compile(
-            r"\b(?:hold\s+or\s+sell|sell\s+or\s+hold|buy\s+or\s+sell|sell\s+or\s+buy)\b",
+            r"\b(?:hold\s+or\s+(?:sell|dump|exit)|(?:sell|dump|exit)\s+or\s+hold|buy\s+or\s+sell|sell\s+or\s+buy)\b",
             re.IGNORECASE,
         ),
         "hold_recommendation",
     ),
 
-    # 4. Price predictions & Market timing
+    # 5. Price predictions & Market timing
     (
         re.compile(
             r"\bwhere\s+will\s+(?:the\s+)?(?:nifty|sensex|[a-zA-Z0-9_\-\.]+)\s+be(?:\s+next|\s+tomorrow|\s+in|\s+at|\s+by|\s+this)?\b",
@@ -87,7 +112,7 @@ _ADVICE_PATTERNS = [
     ),
     (
         re.compile(
-            r"\b(?:predict|prediction|forecast|projected\s+price|target\s+price)\b",
+            r"\b(?:predict|prediction|forecast|projected\s+price|target\s+price|price\s+target)\b",
             re.IGNORECASE,
         ),
         "price_prediction",
@@ -100,7 +125,7 @@ _ADVICE_PATTERNS = [
         "price_prediction",
     ),
 
-    # 5. General investment advice / tips
+    # 6. General investment advice / tips
     (
         re.compile(
             r"\b(?:give\s+me|share)\s+(?:some\s+)?(?:stock|trading|crypto)\s+(?:tips?|signals?|picks?|recommendations?)\b",
@@ -126,7 +151,7 @@ class GuardrailResult:
 
 
 def check_preflight_guardrail(question: str) -> GuardrailResult:
-    """Check a question against advice/prediction regexes before calling any LLM."""
+    """Check a question against advice, prediction, and jailbreak regexes before calling any LLM."""
     cleaned = question.strip()
     for pattern, reason in _ADVICE_PATTERNS:
         if pattern.search(cleaned):

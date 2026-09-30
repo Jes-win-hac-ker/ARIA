@@ -8,6 +8,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
 from agent.guardrails import check_preflight_guardrail
+from agent.router import route_and_execute
 from .models import ChatSession
 from .schemas import AgentResponse
 
@@ -82,19 +83,16 @@ def ask(request):
         ChatSession.objects.get_or_create(session_id=correlation_id)
         return Response(validated.model_dump())
 
-    # TODO(team): agent orchestration — RAG + filing retrieval tool +
-    # financial calculator tool + price lookup tool (AGENTS.md section 5).
+    # Deterministic tool routing & execution (AGENTS.md sections 1 and 5)
+    answer, tool_outputs, citations, warnings = route_and_execute(question)
 
     payload = {
-        'answer': (
-            "ARIA is a research assistant stub. The agent pipeline is not "
-            "wired yet, so I can only confirm your question was received."
-        ),
+        'answer': answer,
         'refused': False,
         'refusal_reason': None,
-        'citations': [],
-        'tool_outputs': [],
-        'warnings': ['agent_stub'],
+        'citations': [c.model_dump() for c in citations],
+        'tool_outputs': [t.model_dump() for t in tool_outputs],
+        'warnings': warnings,
         'token_usage': 0,
         'correlation_id': correlation_id,
         'latency_ms': int((time.monotonic() - start) * 1000),
