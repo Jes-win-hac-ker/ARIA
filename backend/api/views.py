@@ -7,6 +7,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
+from agent.guardrails import check_preflight_guardrail
 from .models import ChatSession
 from .schemas import AgentResponse
 
@@ -58,6 +59,28 @@ def ask(request):
             {'error': "Field 'question' is required."},
             status=status.HTTP_400_BAD_REQUEST,
         )
+
+    # Pre-flight guardrail: short-circuit advice/prediction prompts before LLM (AGENTS.md section 3)
+    guardrail_result = check_preflight_guardrail(question)
+    if guardrail_result.is_blocked:
+        refusal_payload = {
+            'answer': guardrail_result.refusal_message,
+            'refused': True,
+            'refusal_reason': guardrail_result.reason,
+            'citations': [],
+            'tool_outputs': [],
+            'warnings': ['preflight_guardrail_refusal'],
+            'token_usage': 0,
+            'correlation_id': correlation_id,
+            'latency_ms': int((time.monotonic() - start) * 1000),
+        }
+        try:
+            validated = AgentResponse.model_validate(refusal_payload)
+        except Exception as exc:  # pragma: no cover
+            return Response(_safe_fallback(correlation_id, str(exc)))
+
+        ChatSession.objects.get_or_create(session_id=correlation_id)
+        return Response(validated.model_dump())
 
     # TODO(team): agent orchestration — RAG + filing retrieval tool +
     # financial calculator tool + price lookup tool (AGENTS.md section 5).
