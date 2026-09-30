@@ -1,0 +1,6 @@
+# Keep the frontend build context small.
+node_modules/
+dist/
+.env
+.env.local
+.git

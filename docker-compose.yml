@@ -1,0 +1,87 @@
+services:
+  db:
+    image: mysql:8.4
+    container_name: aria-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set in .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-aria}
+      MYSQL_USER: ${MYSQL_USER:-aria}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set in .env}
+      TZ: ${TZ:-Asia/Kolkata}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # mysqladmin ping returns 0 once the server accepts connections;
+      # compose gates `web` on this status.
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"  # host access for dev tooling; remove in prod
+    security_opt:
+      - no-new-privileges:true
+
+  web:
+    build: ./backend
+    image: aria-api:latest
+    container_name: aria-api
+    restart: unless-stopped
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput --clear &&
+             gunicorn ARIA.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 60"
+    environment: &web-env
+      DJANGO_SETTINGS_MODULE: ARIA.settings
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-only-insecure-key-change-me}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-0}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      MYSQL_HOST: db
+      MYSQL_PORT: "3306"
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-aria}
+      MYSQL_USER: ${MYSQL_USER:-aria}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set in .env}
+      TZ: ${TZ:-Asia/Kolkata}
+    ports:
+      - "${WEB_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/health/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    security_opt:
+      - no-new-privileges:true
+
+  frontend:
+    build: ./frontend
+    image: aria-frontend:latest
+    container_name: aria-frontend
+    restart: unless-stopped
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3000"
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      web:
+        condition: service_healthy
+    healthcheck:
+      # 127.0.0.1 explicitly: busybox wget resolves "localhost" to ::1, but
+      # Vite binds IPv4 only, so a literal localhost URL would false-fail.
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:3000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  mysql-data:
