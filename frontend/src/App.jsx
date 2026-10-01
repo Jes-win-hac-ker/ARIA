@@ -277,7 +277,6 @@ export default function App() {
         setQuestion(`Compare ${companyNames} using only retrieved public filings and management commentary. Cite each source, identify the reporting period, and state when data is unavailable. Do not calculate financial metrics or provide investment advice.`)
         composerRef.current?.focus()
     }
-    }
 
     function goToLogin() {
         setSettingsOpen(false)
