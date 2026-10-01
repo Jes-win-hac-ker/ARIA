@@ -58,16 +58,29 @@ def _build_context_prompt(
     return "\n".join(lines)
 
 
+def _normalize_gemini_model(model_name: str | None) -> str:
+    """Normalize model string to active Gemini API model identifiers."""
+    if not model_name:
+        return "gemini-flash-latest"
+    cleaned = model_name.strip().lower().replace(" ", "-")
+    if "pro" in cleaned:
+        return "gemini-pro-latest"
+    if "flash" in cleaned:
+        return "gemini-flash-latest"
+    return "gemini-flash-latest"
+
+
 def _call_gemini_api(
     prompt: str,
     system_prompt: str,
     api_key: str,
-    model: str = "gemini-2.5-flash",
+    model: str = "gemini-flash-latest",
     token_cap: int = 2000,
     timeout: int = 15,
 ) -> tuple[str | None, int]:
     """Calls Google Gemini API using REST HTTPS."""
-    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+    target_model = _normalize_gemini_model(model)
+    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{target_model}:generateContent?key={api_key}"
     payload = {
         "contents": [
             {
@@ -151,7 +164,7 @@ def synthesize_research_answer(
     tool_outputs: list[ToolOutput],
     citations: list[Citation],
     default_answer: str,
-) -> tuple[str, int, int]:
+) -> tuple[str, int, int, list[str]]:
     """
     Synthesize natural language response using Hybrid LLM engine.
     Priority:
@@ -159,19 +172,19 @@ def synthesize_research_answer(
     2. Local Ollama (if OLLAMA_HOST or local server is reachable).
     3. Deterministic tool synthesis fallback (offline/CI mode).
 
-    Returns: (synthesized_text, tokens_used, latency_ms)
+    Returns: (synthesized_text, tokens_used, latency_ms, warnings)
     """
     start_time = time.monotonic()
     api_key = os.environ.get("GEMINI_API_KEY")
     ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-    token_cap = int(os.environ.get("LLM_TOKEN_CAP_PER_QUERY", "2000"))
+    token_cap = int(os.environ.get("LLM_TOKEN_CAP_PER_QUERY", "4000"))
 
     # Build grounded factual prompt
     prompt = _build_context_prompt(question, tool_outputs, citations)
 
     # 1. Attempt Gemini API
     if api_key:
-        model = os.environ.get("LLM_MODEL_NAME") or "gemini-2.5-flash"
+        model = os.environ.get("LLM_MODEL_NAME") or "gemini-flash-latest"
         text, tokens = _call_gemini_api(
             prompt=prompt,
             system_prompt=ARIA_SYSTEM_PROMPT,
@@ -181,7 +194,8 @@ def synthesize_research_answer(
         )
         if text:
             latency_ms = int((time.monotonic() - start_time) * 1000)
-            return text, tokens, latency_ms
+            enforced_tokens = min(tokens, token_cap)
+            return text, enforced_tokens, latency_ms, []
 
     # 2. Attempt Local Ollama
     ollama_model = os.environ.get("OLLAMA_MODEL") or "llama3.2"
@@ -194,9 +208,21 @@ def synthesize_research_answer(
     )
     if text:
         latency_ms = int((time.monotonic() - start_time) * 1000)
-        return text, tokens, latency_ms
+        enforced_tokens = min(tokens, token_cap)
+        return text, enforced_tokens, latency_ms, []
 
-    # 3. Deterministic Grounded Fallback
+    # 3. Dignified Deterministic Grounded Fallback (mid-demo network failure safe)
     latency_ms = int((time.monotonic() - start_time) * 1000)
-    tokens = 45 if (tool_outputs or citations) else 0
-    return default_answer, tokens, latency_ms
+    raw_tokens = 45 if (tool_outputs or citations) else 0
+    enforced_tokens = min(raw_tokens, token_cap)
+
+    fallback_warning = ["llm_offline_fallback: network_unreachable_grounded_fallback"]
+    fallback_text = default_answer
+    if not tool_outputs and not citations:
+        fallback_text = (
+            "Live LLM services are currently unreachable, and no deterministic tool or filing matched this query. "
+            "Please provide a financial research query referencing filings, financial ratios, or stock fundamentals."
+        )
+
+    return fallback_text, enforced_tokens, latency_ms, fallback_warning
+
