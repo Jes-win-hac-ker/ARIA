@@ -172,8 +172,13 @@ def route_and_execute(question: str) -> tuple[str, list[ToolOutput], list[Citati
         answer = "In the corporate disclosures, management addressed margin pressure by highlighting input cost inflation and operational efficiencies, while noting that consolidated EBITDA margins showed resilience."
         return answer, tool_outputs, citations, warnings
 
-    # Route 3: Fundamentals Lookup
-    fundamentals_keywords = ["fundamentals", "stored", "look up", "pe ratio", "recorded", "market cap", "revenue for infosys"]
+    # Route 3: Fundamentals & Stored Market Price Lookup
+    fundamentals_keywords = [
+        "fundamentals", "stored", "look up", "pe ratio", "recorded",
+        "market cap", "revenue for infosys", "price right now", "current price",
+        "live price", "today's price", "stock price", "closing price",
+        "share price", "price of", "'s price", "price"
+    ]
     if any(kw in lower_q for kw in fundamentals_keywords):
         tool_outputs.append(
             ToolOutput(
@@ -187,7 +192,10 @@ def route_and_execute(question: str) -> tuple[str, list[ToolOutput], list[Citati
                 timestamp=timestamp,
             )
         )
-        answer = "Retrieved stored fundamental data from local database records."
+        if any(p in lower_q for p in ["price", "market cap", "ratio"]):
+            answer = "Retrieved stored market pricing and fundamental data from local database records."
+        else:
+            answer = "Retrieved stored fundamental data from local database records."
         return answer, tool_outputs, citations, warnings
 
     # Default / General research query

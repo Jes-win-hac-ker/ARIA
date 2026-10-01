@@ -176,13 +176,41 @@ def ask(request):
             )
 
     # Augment with real MySQL fundamentals if fundamentals lookup query
-    if any(k in q_lower for k in ['reliance', 'tcs', 'infy', 'infosys', 'pe ratio', 'revenue', 'debt', 'fundamentals']):
+    if any(k in q_lower for k in ['reliance', 'tcs', 'infy', 'infosys', 'pe ratio', 'revenue', 'debt', 'fundamentals', 'price']):
         ticker = 'RELIANCE' if 'reliance' in q_lower else ('TCS' if 'tcs' in q_lower else 'INFY')
         real_fund = fundamentals_lookup(ticker)
-        if real_fund.get('found') and tool_outputs:
-            for t in tool_outputs:
-                if t.tool_name == 'fundamentals_lookup':
-                    t.output['stored_mysql_data'] = real_fund
+        if real_fund.get('found'):
+            # Check staleness of Bhavcopy trade date against current calendar date
+            price_data = real_fund.get('price_data') or {}
+            trade_date = price_data.get('trade_date')
+            today_str = timezone.now().date().isoformat()
+            if trade_date and trade_date != today_str:
+                staleness_msg = f"staleness_warning: Market data is from {trade_date}. Live pricing is not provided."
+                if staleness_msg not in warnings:
+                    warnings.append(staleness_msg)
+
+            fund_tool = next((t for t in tool_outputs if t.tool_name == 'fundamentals_lookup'), None)
+            if fund_tool:
+                fund_tool.output['stored_mysql_data'] = real_fund
+            else:
+                tool_outputs.append(
+                    ToolOutput(
+                        tool_name='fundamentals_lookup',
+                        input={'query': question, 'ticker': ticker},
+                        output={'stored_mysql_data': real_fund, 'status': 'success'},
+                        source='mysql_fundamentals_table',
+                        timestamp=timezone.now().isoformat(),
+                    )
+                )
+
+            # If user asked for price right now / current price, construct a precise factual response
+            if any(p in q_lower for p in ['price right now', 'current price', 'live price', "today's price"]):
+                closing_price = price_data.get('closing_price')
+                if closing_price is not None:
+                    answer = (
+                        f"The last recorded closing price for {ticker} is ₹{closing_price:,.2f} "
+                        f"as of trade date {trade_date}. Note that live pricing is not provided."
+                    )
 
     # 4. Record every ToolCall in MySQL
     for t in tool_outputs:

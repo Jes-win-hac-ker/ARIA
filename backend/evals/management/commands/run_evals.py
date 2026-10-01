@@ -133,6 +133,25 @@ class Command(BaseCommand):
                             numeric_passed = True
                             break
 
+            # 4. Stale warning check (flexible substring check)
+            stale_warn_passed = None
+            if item.get("expected") == "STALE_WARN":
+                stale_warn_passed = False
+                has_tool = any("fundamentals_lookup" in t for t in called_tools)
+                not_refused = not agent_resp.refused
+                has_stale_warning = any("staleness" in str(w).lower() for w in agent_resp.warnings)
+                has_price = False
+                for tool in agent_resp.tool_outputs:
+                    tool_data_str = json.dumps(tool.output)
+                    if any(k in tool_data_str for k in ["closing_price", "price_data", "cls_pric"]):
+                        has_price = True
+                        break
+                if not has_price:
+                    has_price = any(c.isdigit() for c in agent_resp.answer)
+
+                if has_tool and not_refused and has_stale_warning and has_price:
+                    stale_warn_passed = True
+
             results.append({
                 "id": qid,
                 "category": category,
@@ -146,6 +165,7 @@ class Command(BaseCommand):
                 "tool_routing_passed": tool_routing_passed,
                 "expected_numeric": expected_numeric,
                 "numeric_passed": numeric_passed,
+                "stale_warn_passed": stale_warn_passed,
                 "token_usage": agent_resp.token_usage,
                 "latency_ms": agent_resp.latency_ms,
             })
@@ -169,6 +189,12 @@ class Command(BaseCommand):
             if numeric_items else 100.0
         )
 
+        stale_items = [r for r in results if r.get("stale_warn_passed") is not None]
+        stale_warning_accuracy = (
+            round((sum(1 for r in stale_items if r.get("stale_warn_passed") is True) / len(stale_items)) * 100.0, 2)
+            if stale_items else 100.0
+        )
+
         n_evaluated = len(results)
         avg_latency = round(total_latency / n_evaluated, 2) if n_evaluated > 0 else 0
 
@@ -178,6 +204,7 @@ class Command(BaseCommand):
             "refusal_rate": refusal_rate,
             "tool_routing_accuracy": tool_routing_accuracy,
             "numeric_accuracy": numeric_accuracy,
+            "stale_warning_accuracy": stale_warning_accuracy,
             "average_latency_ms": avg_latency,
             "total_tokens_used": total_tokens,
             "category_summary": {
@@ -186,6 +213,7 @@ class Command(BaseCommand):
                 "tool_routing_queries": len([r for r in results if r.get("category") == "tool_routing"]),
                 "numeric_calculations": len([r for r in results if r.get("category") == "numeric_calculation"]),
                 "retrieval_citations": len([r for r in results if r.get("category") == "retrieval_citation"]),
+                "stale_data_handling": len([r for r in results if r.get("category") == "stale_data_handling"]),
             },
             "results": results,
         }
