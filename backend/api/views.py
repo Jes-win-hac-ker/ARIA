@@ -213,13 +213,13 @@ def ask(request):
             return Response(_safe_fallback(correlation_id, str(exc)))
 
         session, _ = get_or_create_session(session_id=session_id)
-        record_user_message(session=session, content=question)
-        record_assistant_message(session=session, content=refusal_payload['answer'])
+        record_user_message(session=session, content=question, correlation_id=correlation_id)
+        record_assistant_message(session=session, content=refusal_payload['answer'], correlation_id=correlation_id)
         return Response(validated.model_dump())
 
     # 2. MySQL Session Memory: Get or create session & save user message
     session, _ = get_or_create_session(session_id=session_id)
-    user_msg = record_user_message(session=session, content=question)
+    user_msg = record_user_message(session=session, content=question, correlation_id=correlation_id)
 
     # 3. Deterministic tool routing & execution
     answer, tool_outputs, citations, warnings = route_and_execute(question)
@@ -310,7 +310,7 @@ def ask(request):
             'latency_ms': int((time.monotonic() - start_time) * 1000),
         }
         validated = AgentResponse.model_validate(refusal_payload)
-        record_assistant_message(session=session, content=refusal_payload['answer'])
+        record_assistant_message(session=session, content=refusal_payload['answer'], correlation_id=correlation_id)
         return Response(validated.model_dump())
 
     token_usage = llm_tokens if llm_tokens > 0 else (45 if tool_outputs else 0)
@@ -334,7 +334,7 @@ def ask(request):
         return Response(_safe_fallback(correlation_id, str(exc)))
 
     # Persist assistant message and token usage in MySQL
-    record_assistant_message(session=session, content=synthesized_answer)
+    record_assistant_message(session=session, content=synthesized_answer, correlation_id=correlation_id)
     add_session_token_usage(session=session, tokens=token_usage)
 
     return Response(validated.model_dump())

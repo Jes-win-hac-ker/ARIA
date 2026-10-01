@@ -295,3 +295,8 @@ class AskEndpointTests(TestCase):
             self.assertIsNotNone(tc.input_args)
             self.assertIsNotNone(tc.output_result)
             self.assertGreaterEqual(tc.latency_ms, 0)
+
+        # 4. Correlation ID is persisted on both user and assistant messages (checklist item C3)
+        resp_data = response.json()
+        self.assertEqual(str(messages[0].correlation_id), resp_data['correlation_id'])
+        self.assertEqual(str(messages[1].correlation_id), resp_data['correlation_id'])

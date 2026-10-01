@@ -12,21 +12,23 @@ def get_or_create_session(session_id: str) -> tuple[ChatSession, bool]:
     return ChatSession.objects.get_or_create(session_id=session_id)
 
 
-def record_user_message(session: ChatSession, content: str) -> Message:
+def record_user_message(session: ChatSession, content: str, correlation_id: str | None = None) -> Message:
     """Store an incoming user prompt linked to the session."""
     return Message.objects.create(
         session=session,
         role='user',
         content=content,
+        correlation_id=correlation_id,
     )
 
 
-def record_assistant_message(session: ChatSession, content: str) -> Message:
+def record_assistant_message(session: ChatSession, content: str, correlation_id: str | None = None) -> Message:
     """Store the final assistant response linked to the session."""
     return Message.objects.create(
         session=session,
         role='assistant',
         content=content,
+        correlation_id=correlation_id,
     )
 
 
