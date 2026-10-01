@@ -1,6 +1,10 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 export const mockMode = import.meta.env.VITE_MOCK_MODE === 'true'
 
+export function documentUrl(filename) {
+  return `${API_BASE.replace(/\/$/, '')}/api/documents/${encodeURIComponent(filename)}/`
+}
+
 function createMockCorrelationId() {
   return globalThis.crypto?.randomUUID?.() || `mock-${Date.now()}`
 }
