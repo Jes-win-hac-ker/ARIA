@@ -47,6 +47,8 @@ COPY --chown=aria:aria agent ./agent
 COPY --chown=aria:aria rag ./rag
 COPY --chown=aria:aria evals ./evals
 
+RUN mkdir -p /app/staticfiles && chown -R aria:aria /app
+
 USER aria
 
 EXPOSE 8000
