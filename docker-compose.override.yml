@@ -5,6 +5,7 @@ services:
   web:
     command: >
       sh -c "python manage.py migrate --noinput &&
+             python manage.py load_bhavcopy &&
              python manage.py load_market_data &&
              python manage.py build_rag_index &&
              python manage.py runserver 0.0.0.0:8000"

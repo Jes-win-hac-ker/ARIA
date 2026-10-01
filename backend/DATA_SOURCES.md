@@ -58,12 +58,45 @@ Official statutory disclosures filed by listed entities with BSE / NSE under SEB
 * **Content**: Segment EBITDA breakdowns, capex progression, balance sheet leverage, and operating highlights.
 * **Processing**: Extracted page-by-page (72 pages) and indexed into FAISS.
 
+### Document 4: `RIL_Annual_Report_FY24.pdf`
+* **Title**: Reliance Industries Limited — Integrated Annual Report FY 2023-24.
+* **Filing Date / Timestamp**: `2024-08-07T12:00:00+05:30`
+* **Source**: Official Annual Statutory Filing submitted to BSE/NSE.
+* **Content**: Management's Discussion and Analysis (MD&A), Independent Auditor's Report, Standalone & Consolidated Financial Statements for FY 2023-24.
+* **Processing**: Extracted page-by-page (181 pages) and indexed into FAISS.
+
+### Document 5: `RIL_Annual_Report_FY23.pdf`
+* **Title**: Reliance Industries Limited — Integrated Annual Report FY 2022-23.
+* **Filing Date / Timestamp**: `2023-08-05T12:00:00+05:30`
+* **Source**: Official Annual Statutory Filing submitted to BSE/NSE.
+* **Content**: Management's Discussion and Analysis (MD&A), Independent Auditor's Report, Standalone & Consolidated Financial Statements for FY 2022-23.
+* **Processing**: Extracted page-by-page (320 pages) and indexed into FAISS.
+
+### Document 6: `RIL_Concall_Transcript_Q4_FY24.pdf`
+* **Title**: Reliance Industries Limited — Q4 FY 2023-24 Earnings Call Transcript.
+* **Concall Date / Timestamp**: `2024-04-22T20:30:00+05:30`
+* **Source**: BSE India Corporate Announcements / RIL Investor Relations.
+* **Content**: Management review of full-year FY24 performance, retail segment profitability, O2C demand trends, and capital allocation.
+
+### Document 7: `RIL_Concall_Transcript_Q3_FY24.pdf`
+* **Title**: Reliance Industries Limited — Q3 FY 2023-24 Earnings Call Transcript.
+* **Concall Date / Timestamp**: `2024-01-19T20:30:00+05:30`
+* **Source**: BSE India Corporate Announcements / RIL Investor Relations.
+* **Content**: Detailed executive commentary on True 5G capex rollout and subscriber migration (tested in benchmark question 14).
+
+### Document 8: `RIL_Concall_Transcript_Q4_FY23.pdf`
+* **Title**: Reliance Industries Limited — Q4 FY 2022-23 Earnings Call Transcript.
+* **Concall Date / Timestamp**: `2023-04-21T20:30:00+05:30`
+* **Source**: BSE India Corporate Announcements / RIL Investor Relations.
+* **Content**: Management discussion on FY23 operating margins, Jio 5G launch phases, and energy transition progress.
+
 ---
 
 ## 3. FinQA Financial Reasoning Benchmark Dataset
 
 * **Source**: *FinQA: A Dataset of Numerical Reasoning over Financial Data* (Chen et al., EMNLP 2021).
-* **Files**: `dev.json`, `train.json`, `test.json`, `private_test.json`.
+* **Files**: `dev.json`, `test.json`, `private_test.json` (Reference sets).
+* **Optimization Note**: The 80.1 MB raw model-training split (`train.json`) was pruned from the repository footprint as the system operates via agentic RAG and deterministic tools without training weights. The 20-question evaluation benchmark is packaged in `backend/evals/questions.json`.
 * **License**: MIT License / Open Academic Research License.
 * **Purpose**:
   * Ground-truth evaluation set for evaluating whether financial questions requiring multi-step arithmetic are executed using deterministic tools (`financial_calculator`) rather than hallucinatory LLM math.
