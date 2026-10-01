@@ -34,7 +34,7 @@ from .memory import (
     record_tool_call,
     record_user_message,
 )
-from .models import ChatSession
+from .models import Bhavcopy, ChatSession
 from .schemas import AgentResponse, Citation, ToolOutput
 
 AVAILABLE_PDF_DOCUMENTS = frozenset({
@@ -91,6 +91,37 @@ def health(request):
         db_ok = False
     status_code = status.HTTP_200_OK if db_ok else status.HTTP_503_SERVICE_UNAVAILABLE
     return Response({'status': 'ok' if db_ok else 'degraded', 'database': db_ok}, status=status_code)
+
+
+@api_view(['GET'])
+@permission_classes([])
+def market_movers(request):
+    """Return stored NSE end-of-day quotes with their dates and provenance."""
+    tickers = ['RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ICICIBANK']
+    latest_trade_date = Bhavcopy.objects.order_by('-trad_dt').values_list('trad_dt', flat=True).first()
+    movers = []
+
+    for ticker in tickers:
+        lookup = fundamentals_lookup(ticker)
+        price = lookup.get('price_data')
+        movers.append({
+            'ticker': ticker,
+            'found': bool(price),
+            'price': price.get('closing_price') if price else None,
+            'change_pct': price.get('change_pct') if price else None,
+            'trade_date': price.get('trade_date') if price else None,
+            'source': 'NSE Bhavcopy (stored MySQL data)',
+            'retrieved_at': lookup.get('timestamp'),
+            'is_stale': lookup.get('is_stale', True),
+        })
+
+    return Response({
+        'movers': movers,
+        'source': 'NSE Bhavcopy (stored MySQL data)',
+        'as_of': latest_trade_date.isoformat() if latest_trade_date else None,
+        'retrieved_at': timezone.now().isoformat(),
+        'is_stale': True,
+    })
 
 
 @api_view(['POST'])

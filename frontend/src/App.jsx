@@ -214,6 +214,21 @@ export default function App() {
         composerRef.current?.focus()
     }
 
+    function navigateFromCompanyMenu(destination) {
+        if (destination === 'settings') {
+            setEntryPage('workspace')
+            setSettingsNotice('')
+            setSettingsOpen(true)
+            return
+        }
+        if (destination === 'home') {
+            setEntryPage('company-search')
+            return
+        }
+        setActiveSection(destination)
+        setEntryPage('workspace')
+    }
+
     function prepareCompanyComparison() {
         if (selectedCompanies.length < 2) return
         setActiveSection('research')
@@ -223,8 +238,22 @@ export default function App() {
         composerRef.current?.focus()
     }
 
-    function showAuthenticationNotice(action) {
-        setSettingsNotice(`${action} is unavailable: authentication is not configured for this API.`)
+    function goToLogin() {
+        setSettingsOpen(false)
+        setEntryPage('login')
+    }
+
+    function exitGuestSession() {
+        setMessages([])
+        setQuestion('')
+        setCommand('')
+        setError(null)
+        setSelectedCitation(null)
+        setActiveTab('sources')
+        setActiveSection('research')
+        setSettingsOpen(false)
+        setPrivacyOpen(false)
+        setEntryPage('login')
     }
 
     function removeFollowedCompany(company) {
@@ -240,7 +269,14 @@ export default function App() {
     const latestQuestion = messages.at(-1)?.question
 
     if (entryPage === 'login') {
-        return <LoginPage apiHealth={health} onLogin={() => setEntryPage('landing')} />
+        return (
+            <LoginPage
+                apiHealth={health}
+                theme={theme}
+                onToggleTheme={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
+                onLogin={() => setEntryPage('landing')}
+            />
+        )
     }
 
     if (entryPage === 'landing') {
@@ -263,6 +299,7 @@ export default function App() {
                 followedCompanies={followedCompanies}
                 theme={theme}
                 onToggleTheme={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
+                onNavigate={navigateFromCompanyMenu}
             />
         )
     }
@@ -409,7 +446,8 @@ export default function App() {
                         setPrivacyOpen={setPrivacyOpen}
                         settingsNotice={settingsNotice}
                         onClose={() => setSettingsOpen(false)}
-                        onShowAuthenticationNotice={showAuthenticationNotice}
+                        onGoToLogin={goToLogin}
+                        onExitGuestSession={exitGuestSession}
                     />
                 )}
             </div>

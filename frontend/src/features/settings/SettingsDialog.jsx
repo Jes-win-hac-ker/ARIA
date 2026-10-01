@@ -10,7 +10,8 @@ export default function SettingsDialog({
   setPrivacyOpen,
   settingsNotice,
   onClose,
-  onShowAuthenticationNotice,
+  onGoToLogin,
+  onExitGuestSession,
 }) {
   return (
     <div className="settings-backdrop" onMouseDown={(event) => {
@@ -28,14 +29,14 @@ export default function SettingsDialog({
         <section className="settings-section">
           <div className="settings-section-heading">
             <h3>Account</h3>
-            <span className="account-status"><span />No account connected</span>
+            <span className="account-status"><span />Guest session</span>
           </div>
-          <p className="settings-description">This API does not have sign-in or account endpoints configured. Research remains available without an account.</p>
+          <p className="settings-description">Account authentication is not configured. You are using local guest access.</p>
           <div className="account-actions">
-            <button type="button" onClick={() => onShowAuthenticationNotice('Sign in')}>Sign in</button>
-            <button type="button" disabled title="No authenticated account is connected">Sign out</button>
+            <button type="button" onClick={onGoToLogin}>Sign in</button>
+            <button type="button" onClick={onExitGuestSession}>Exit guest session</button>
           </div>
-          <p className="auth-note">Sign-in and sign-out require backend authentication before they can manage an account.</p>
+          <p className="auth-note">Sign in opens the login page; credentials cannot be verified until backend authentication is added. Exiting clears this page’s in-memory research.</p>
         </section>
 
         <section className="settings-section">
