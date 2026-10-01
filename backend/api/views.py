@@ -283,6 +283,7 @@ def ask(request):
             input_args=t.input if isinstance(t.input, dict) else {'query': question},
             output_result=t.output,
             latency_ms=10,
+            correlation_id=correlation_id,
         )
 
     # 5. Hybrid LLM Synthesis (AGENTS.md sections 1, 2, 6)

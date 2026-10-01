@@ -38,6 +38,7 @@ def record_tool_call(
     input_args: dict[str, Any],
     output_result: Any,
     latency_ms: int = 0,
+    correlation_id: str | None = None,
 ) -> ToolCall:
     """
     Log a deterministic tool execution linked to the user's message.
@@ -49,6 +50,7 @@ def record_tool_call(
         input_args=input_args or {},
         output_result=output_result,
         latency_ms=max(0, int(latency_ms)),
+        correlation_id=correlation_id,
     )
 
 

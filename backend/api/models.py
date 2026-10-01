@@ -47,6 +47,7 @@ class ToolCall(models.Model):
     input_args = models.JSONField()
     output_result = models.JSONField()
     latency_ms = models.IntegerField()
+    correlation_id = models.UUIDField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
