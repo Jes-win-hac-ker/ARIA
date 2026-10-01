@@ -8,6 +8,7 @@ class Citation(BaseModel):
     document: str
     locator: str = Field(description="page, section, or tool name")
     snippet: str
+    timestamp: str | None = Field(default=None, description="UTC retrieval timestamp")
 
 
 class ToolOutput(BaseModel):

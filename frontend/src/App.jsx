@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { askQuestion, healthCheck, mockMode } from './api/client.js'
 import { getSessionId } from './utils/session.js'
-import { BrandSymbol, Icon, StatusPill, ThemeToggle } from './shared/ARIAUI.jsx'
+import { ApiStatusDot, BrandSymbol, Icon, ThemeToggle } from './shared/ARIAUI.jsx'
 import { LandingPage, LoginPage } from './features/auth/AuthFlow.jsx'
 import FollowedCompaniesView from './features/companies/FollowedCompaniesView.jsx'
 import ResearchHistoryView from './features/research/ResearchHistoryView.jsx'
@@ -127,6 +127,8 @@ export default function App() {
         setError(null)
         setQuestion('')
         setCommand('')
+        setSelectedCitation(null)
+        setActiveTab('sources')
         setMessages((current) => [...current, {
             id: messageId,
             question: submittedQuestion,
@@ -140,12 +142,6 @@ export default function App() {
             setMessages((current) =>
                 current.map((message) => (message.id === messageId ? { ...message, response: result } : message)),
             )
-            if (result.citations?.length) {
-                setSelectedCitation(`${messageId}-0`)
-                setActiveTab('sources')
-            } else {
-                setSelectedCitation(null)
-            }
         } catch (requestError) {
             setError(requestError instanceof Error ? requestError.message : String(requestError))
             setMessages((current) => current.map((message) =>
@@ -233,12 +229,13 @@ export default function App() {
     const latestQuestion = messages.at(-1)?.question
 
     if (entryPage === 'login') {
-        return <LoginPage onLogin={() => setEntryPage('landing')} />
+        return <LoginPage apiHealth={health} onLogin={() => setEntryPage('landing')} />
     }
 
     if (entryPage === 'landing') {
         return (
             <LandingPage
+                apiHealth={health}
                 onStart={() => setEntryPage('company-search')}
                 theme={theme}
                 onToggleTheme={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
@@ -249,6 +246,7 @@ export default function App() {
     if (entryPage === 'company-search') {
         return (
             <HomePage
+                apiHealth={health}
                 onCompanySelect={prepareCompanyResearch}
                 theme={theme}
                 onToggleTheme={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
@@ -278,25 +276,12 @@ export default function App() {
                     </a>
                     <span className="brand-tagline">ASK <i>·</i> RETRIEVE <i>·</i> INTERPRET <i>·</i> AUGMENT</span>
                 </div>
-
-                <form className="command-search" onSubmit={ask} role="search">
-                    <Icon name="search">⌕</Icon>
-                    <input
-                        aria-label="Ask a financial research question"
-                        value={command}
-                        onChange={(event) => setCommand(event.target.value)}
-                        placeholder="Ask a question about a filing or company…"
-                        disabled={loading}
-                    />
-                    <kbd>⌘ K</kbd>
-                </form>
-
                 <div className="command-actions">
                     <ThemeToggle
                         theme={theme}
                         onToggle={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
                     />
-                    <StatusPill health={health} />
+                    <ApiStatusDot health={health} />
                 </div>
             </header>
 
@@ -353,11 +338,6 @@ export default function App() {
                             ) : (
                                 <div className="sidebar-empty">Questions and their source trails will appear here in this session.</div>
                             )}
-
-                        </div>
-                        <div className="sidebar-bottom">
-                            <div className="sidebar-status"><StatusPill health={health} /></div>
-                            <p>Source-grounded financial research</p>
                         </div>
                     </aside>
                 )}

@@ -2,6 +2,27 @@ export function Icon({ name, children }) {
   return <span className={`icon icon-${name}`} aria-hidden="true">{children}</span>
 }
 
+export function ApiStatusDot({ health, className = '' }) {
+  const labels = {
+    checking: 'API checking',
+    connected: 'API connected',
+    degraded: 'API degraded',
+    unreachable: 'API unreachable',
+  }
+  const label = labels[health] || 'API status unknown'
+
+  return (
+    <span
+      className={`api-status-dot status-${health} ${className}`.trim()}
+      role="img"
+      aria-label={label}
+      title={label}
+    >
+      <span className="status-dot" aria-hidden="true" />
+    </span>
+  )
+}
+
 export function BrandSymbol({ idPrefix }) {
   const mainGradient = `${idPrefix}-mark-main`
   const secondaryGradient = `${idPrefix}-mark-secondary`

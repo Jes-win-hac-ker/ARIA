@@ -14,7 +14,7 @@ function ToolOutput({ tool }) {
   )
 }
 
-export function EvidenceTabs({ messages, activeTab, setActiveTab }) {
+export function EvidenceTabs({ messages, activeTab, setActiveTab, selectedCitation }) {
   const citationCount = messages.reduce((count, message) => count + (message.response?.citations?.length || 0), 0)
   const toolCount = messages.reduce((count, message) => count + (message.response?.tool_outputs?.length || 0), 0)
 
@@ -27,6 +27,7 @@ export function EvidenceTabs({ messages, activeTab, setActiveTab }) {
         role="tab"
         aria-selected={activeTab === 'sources'}
         aria-controls="sources-panel"
+        disabled={!selectedCitation}
         onClick={() => setActiveTab('sources')}
       >
         <Icon name="document">▤</Icon>
@@ -50,7 +51,7 @@ export function EvidenceTabs({ messages, activeTab, setActiveTab }) {
   )
 }
 
-export default function EvidenceInspector({ messages, activeTab, setActiveTab, selectedCitation, setSelectedCitation }) {
+export default function EvidenceInspector({ messages, activeTab, selectedCitation, onClose }) {
   const citations = messages.flatMap((message) =>
     (message.response?.citations || []).map((citation, index) => ({
       ...citation,
@@ -64,6 +65,10 @@ export default function EvidenceInspector({ messages, activeTab, setActiveTab, s
 
   return (
     <aside className="inspector-pane" aria-label="Research evidence">
+      <div className="inspector-drawer-heading">
+        <span className="overline">{activeTab === 'sources' ? 'SOURCE DOCUMENT' : 'TOOL ACTIVITY'}</span>
+        <button className="inspector-close" type="button" onClick={onClose} aria-label="Close evidence drawer" title="Close evidence drawer">×</button>
+      </div>
       {activeTab === 'sources' ? (
         <div className="inspector-content" id="sources-panel" role="tabpanel" aria-labelledby="sources-tab">
           {selected ? (
@@ -74,6 +79,7 @@ export default function EvidenceInspector({ messages, activeTab, setActiveTab, s
                   <div className="source-title-wrap">
                     <h2>{selected.document}</h2>
                     <p>{selected.locator}</p>
+                    <p className="source-retrieval-time">Retrieved {selected.timestamp || 'Timestamp unavailable'}</p>
                   </div>
                   <span className="source-number">[{selected.index}]</span>
                 </div>
@@ -102,6 +108,7 @@ export default function EvidenceInspector({ messages, activeTab, setActiveTab, s
                     <span className="source-list-copy">
                       <strong>{citation.document}</strong>
                       <span>{citation.locator}</span>
+                      <span className="source-retrieval-time">Retrieved {citation.timestamp || 'Timestamp unavailable'}</span>
                     </span>
                     <span className="source-chevron" aria-hidden="true">›</span>
                   </button>

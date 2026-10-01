@@ -127,6 +127,7 @@ def ask(request):
                     document=c['document'],
                     locator=c['locator'],
                     snippet=c['snippet'],
+                    timestamp=c.get('timestamp'),
                 )
             )
 
