@@ -338,7 +338,6 @@ export default function App() {
                 followedCompanies={followedCompanies}
                 savedReports={savedReports}
                 onToggleSaveReport={toggleSavedReport}
-                onNavigate={navigateFromCompanyPage}
                 theme={theme}
                 onToggleTheme={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
                 onNavigate={navigateFromCompanyMenu}
