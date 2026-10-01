@@ -144,7 +144,10 @@ function LandingPage({ onStart }) {
                     </div>
                 </div>
 
-
+                <div className="landing-nav-status">
+                    <span className="status-dot" />
+                    SOURCE-GROUNDED RESEARCH
+                </div>
             </header>
 
             <section className="landing-hero">
@@ -174,7 +177,9 @@ function LandingPage({ onStart }) {
                             <span>→</span>
                         </button>
 
-
+                        <button className="landing-secondary-button">
+                            Explore ARIA
+                        </button>
                     </div>
                 </div>
 
