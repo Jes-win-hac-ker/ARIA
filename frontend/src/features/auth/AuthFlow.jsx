@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BrandSymbol } from '../../shared/ARIAUI.jsx'
+import { BrandSymbol, ThemeToggle } from '../../shared/ARIAUI.jsx'
 
 function BrandMark() {
     return (
@@ -113,9 +113,9 @@ export function LoginPage({ onLogin }) {
     )
 }
 
-export function LandingPage({ onStart }) {
+export function LandingPage({ onStart, theme, onToggleTheme }) {
     return (
-        <main className="landing-page">
+        <main className={`landing-page theme-${theme}`}>
             <header className="landing-nav">
                 <div className="landing-brand">
                     <BrandMark />
@@ -124,7 +124,7 @@ export function LandingPage({ onStart }) {
                         <span>ASK · RETRIEVE · INTERPRET · AUGMENT</span>
                     </div>
                 </div>
-                <span className="landing-nav-status">RESEARCH-ONLY WORKSPACE</span>
+                <ThemeToggle theme={theme} onToggle={onToggleTheme} />
             </header>
 
             <section className="landing-hero">

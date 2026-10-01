@@ -3129,6 +3129,28 @@ button:disabled {
   background: #5e8d58;
 }
 
+.theme-toggle-button {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.theme-toggle-button:hover {
+  border-color: var(--border-light);
+  background: var(--surface-subtle);
+  color: var(--text-primary);
+}
+
 .landing-hero {
   width: min(1180px, 90%);
   min-height: 570px;
@@ -3625,6 +3647,10 @@ button:disabled {
   font-size: 18px;
 }
 
+.home-nav .theme-toggle-button {
+  margin-left: auto;
+}
+
 .home-content {
   width: min(920px, calc(100% - 40px));
   margin: 0 auto;
@@ -3812,6 +3838,87 @@ button:disabled {
   padding: 25px;
   text-align: center;
   color: #7180a3;
+}
+
+.theme-dark.landing-page {
+  background: #191d20;
+  color: #eef0ef;
+}
+
+.theme-dark .landing-nav {
+  border-color: #3a4449;
+  background: #22282c;
+}
+
+.theme-dark .landing-brand strong,
+.theme-dark .landing-copy h1 {
+  color: #eef0ef;
+}
+
+.theme-dark .landing-brand span,
+.theme-dark .landing-copy>p {
+  color: #a3afb3;
+}
+
+.theme-dark .research-preview {
+  border-color: #3a4449;
+  background: #22282c;
+}
+
+.theme-dark .preview-header,
+.theme-dark .preview-row {
+  border-color: #3a4449;
+  color: #d0d6d7;
+}
+
+.home-page.theme-dark {
+  background: #191d20;
+  color: #eef0ef;
+}
+
+.home-page.theme-dark::before {
+  opacity: 0.12;
+}
+
+.theme-dark .home-nav,
+.theme-dark .company-chip,
+.theme-dark .company-card,
+.theme-dark .no-company-results,
+.theme-dark .home-search-box input {
+  border-color: #3a4449;
+  background: #22282c;
+  color: #eef0ef;
+}
+
+.theme-dark .home-menu-button,
+.theme-dark .home-theme-button,
+.theme-dark .home-nav-title,
+.theme-dark .home-heading h1,
+.theme-dark .company-name,
+.theme-dark .company-arrow {
+  color: #eef0ef;
+}
+
+.theme-dark .home-menu-button span {
+  background: #eef0ef;
+}
+
+.theme-dark .home-heading p,
+.theme-dark .popular-label,
+.theme-dark .company-ticker,
+.theme-dark .no-company-results {
+  color: #a3afb3;
+}
+
+.theme-dark .company-initial {
+  background: #303b40;
+  color: #d1dde1;
+}
+
+.theme-dark .theme-toggle-button {
+  border-color: #3a4449;
+  background: #22282c;
+  color: #d0d6d7;
 }
 
 @media (max-width: 650px) {
