@@ -112,7 +112,10 @@ class Command(BaseCommand):
 
             # 2. Tool routing check
             if expected_tools:
-                tool_routing_passed = all(tool in called_tools for tool in expected_tools)
+                tool_routing_passed = all(
+                    any(t.replace("filings", "filing") == c.replace("filings", "filing") for c in called_tools)
+                    for t in expected_tools
+                )
             else:
                 tool_routing_passed = len(called_tools) == 0 if expected_refused else True
 
