@@ -18,6 +18,15 @@ export async function healthCheck() {
   return response.json()
 }
 
+export async function getComparisonData() {
+  const response = await fetch(`${API_BASE}/api/comparison-data/`)
+  if (!response.ok) {
+    throw new Error(`Comparison data request failed with HTTP ${response.status}`)
+  }
+
+  return response.json()
+}
+
 export async function askQuestion(question) {
   if (mockMode) {
     return {

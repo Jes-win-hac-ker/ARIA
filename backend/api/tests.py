@@ -51,6 +51,30 @@ class DocumentViewTests(TestCase):
         self.assertEqual(response.status_code, 404)
 
 
+class ComparisonDataTests(TestCase):
+    def test_returns_stored_fundamentals_with_source_and_period(self):
+        CompanyFundamental.objects.create(
+            tckr_symb='RELIANCE',
+            company_name='Reliance Industries Limited',
+            revenue_cr=Decimal('1002500.00'),
+            net_profit_cr=Decimal('79020.00'),
+            eps=Decimal('104.50'),
+            fiscal_year='FY2025-26',
+            as_of_date='2026-03-31',
+            source='Annual filing fixture',
+        )
+
+        response = self.client.get('/api/comparison-data/')
+
+        self.assertEqual(response.status_code, 200)
+        record = response.json()['records'][0]
+        self.assertEqual(record['ticker'], 'RELIANCE')
+        self.assertEqual(record['fiscal_year'], 'FY2025-26')
+        self.assertEqual(record['revenue_cr'], 1002500.0)
+        self.assertEqual(record['source'], 'Annual filing fixture')
+        self.assertEqual(record['as_of_date'], '2026-03-31')
+
+
 class ToolUnitTests(TestCase):
     def setUp(self):
         # Create test records
