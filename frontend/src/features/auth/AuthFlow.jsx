@@ -9,7 +9,7 @@ function BrandMark() {
     )
 }
 
-export function LoginPage({ apiHealth, onLogin }) {
+export function LoginPage({ apiHealth, theme, onToggleTheme, onLogin }) {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [passwordVisible, setPasswordVisible] = useState(false)
@@ -21,8 +21,11 @@ export function LoginPage({ apiHealth, onLogin }) {
     }
 
     return (
-        <main className="auth-page">
-            <ApiStatusDot className="auth-api-status" health={apiHealth} />
+        <main className={`auth-page theme-${theme}`}>
+            <div className="auth-page-actions">
+                <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+                <ApiStatusDot className="auth-api-status" health={apiHealth} />
+            </div>
             <section className="auth-card" aria-labelledby="login-heading">
                 <a className="auth-brand" href="/" aria-label="ARIA home">
                     <BrandMark />

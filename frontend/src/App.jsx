@@ -252,22 +252,48 @@ export default function App() {
         composerRef.current?.focus()
     }
 
-    function navigateFromCompanyPage(destination) {
+    function navigateFromCompanyMenu(destination) {
+        if (destination === 'settings') {
+            setEntryPage('workspace')
+            setSettingsNotice('')
+            setSettingsOpen(true)
+            return
+        }
+
         if (destination === 'home') {
             setEntryPage('company-search')
             return
         }
 
-        setActiveSection(destination === 'settings' ? 'research' : destination)
+        setActiveSection(destination)
         setEntryPage('workspace')
-        if (destination === 'settings') {
-            setSettingsNotice('')
-            setSettingsOpen(true)
-        }
     }
 
-    function showAuthenticationNotice(action) {
-        setSettingsNotice(`${action} is unavailable: authentication is not configured for this API.`)
+    function prepareCompanyComparison() {
+        if (selectedCompanies.length < 2) return
+        setActiveSection('research')
+        const companies = followedCompanies.filter((company) => selectedCompanies.includes(company.ticker))
+        const companyNames = companies.map((company) => `${company.name} (${company.ticker})`).join(' and ')
+        setQuestion(`Compare ${companyNames} using only retrieved public filings and management commentary. Cite each source, identify the reporting period, and state when data is unavailable. Do not calculate financial metrics or provide investment advice.`)
+        composerRef.current?.focus()
+    }
+
+    function goToLogin() {
+        setSettingsOpen(false)
+        setEntryPage('login')
+    }
+
+    function exitGuestSession() {
+        setMessages([])
+        setQuestion('')
+        setCommand('')
+        setError(null)
+        setSelectedCitation(null)
+        setActiveTab('sources')
+        setActiveSection('research')
+        setSettingsOpen(false)
+        setPrivacyOpen(false)
+        setEntryPage('login')
     }
 
     function removeFollowedCompany(company) {
@@ -282,7 +308,14 @@ export default function App() {
     const latestQuestion = messages.at(-1)?.question
 
     if (entryPage === 'login') {
-        return <LoginPage apiHealth={health} onLogin={() => setEntryPage('landing')} />
+        return (
+            <LoginPage
+                apiHealth={health}
+                theme={theme}
+                onToggleTheme={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
+                onLogin={() => setEntryPage('landing')}
+            />
+        )
     }
 
     if (entryPage === 'landing') {
@@ -308,6 +341,7 @@ export default function App() {
                 onNavigate={navigateFromCompanyPage}
                 theme={theme}
                 onToggleTheme={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
+                onNavigate={navigateFromCompanyMenu}
             />
         )
     }
@@ -456,7 +490,8 @@ export default function App() {
                         setPrivacyOpen={setPrivacyOpen}
                         settingsNotice={settingsNotice}
                         onClose={() => setSettingsOpen(false)}
-                        onShowAuthenticationNotice={showAuthenticationNotice}
+                        onGoToLogin={goToLogin}
+                        onExitGuestSession={exitGuestSession}
                     />
                 )}
             </div>

@@ -8,30 +8,35 @@ const companies = [
         name: 'Reliance Industries',
         ticker: 'RELIANCE',
         initial: 'R',
+        logo: '/company-logos/reliance-industries.png',
         trend: 'up',
     },
     {
         name: 'TCS',
         ticker: 'TCS',
         initial: 'T',
+        logo: '/company-logos/tcs.svg',
         trend: 'down',
     },
     {
         name: 'HDFC Bank',
         ticker: 'HDFCBANK',
         initial: 'H',
+        logo: '/company-logos/hdfc-bank.svg',
         trend: 'up',
     },
     {
         name: 'Infosys',
         ticker: 'INFY',
         initial: 'In',
+        logo: '/company-logos/infosys.svg',
         trend: 'up',
     },
     {
         name: 'ICICI Bank',
         ticker: 'ICICIBANK',
         initial: 'IC',
+        logo: '/company-logos/icici-bank.svg',
         trend: 'up',
     },
 ]
@@ -103,21 +108,95 @@ function TrendLine({ direction }) {
     )
 }
 
-export default function HomePage({ apiHealth, onCompanySelect, onToggleFollow, followedCompanies, savedReports, onToggleSaveReport, onNavigate, theme, onToggleTheme }) {
+function CompanyLogo({ company, detail = false }) {
+    const [failed, setFailed] = useState(false)
+
+    return (
+        <span className={detail ? 'company-detail-logo' : 'company-initial'} aria-hidden="true">
+            {failed ? company.initial : (
+                <img
+                    src={company.logo}
+                    alt=""
+                    onError={() => setFailed(true)}
+                />
+            )}
+        </span>
+    )
+}
+
+export default function HomePage({
+    apiHealth,
+    onCompanySelect,
+    onToggleFollow,
+    followedCompanies,
+    savedReports,
+    onToggleSaveReport,
+    onNavigate,
+    theme,
+    onToggleTheme,
+}) {
+    
     const [search, setSearch] = useState('')
     const [selectedCompany, setSelectedCompany] = useState(null)
     const [activeCompanyTab, setActiveCompanyTab] = useState('overview')
     const [reportingPeriod, setReportingPeriod] = useState('')
-    const [navigationOpen, setNavigationOpen] = useState(false)
+    const [menuOpen, setMenuOpen] = useState(false)
 
     useEffect(() => {
-        if (!navigationOpen) return undefined
+        if (!menuOpen) return undefined
         function closeOnEscape(event) {
-            if (event.key === 'Escape') setNavigationOpen(false)
+            if (event.key === 'Escape') setMenuOpen(false)
         }
         window.addEventListener('keydown', closeOnEscape)
         return () => window.removeEventListener('keydown', closeOnEscape)
-    }, [navigationOpen])
+    }, [menuOpen])
+
+    function navigateFromMenu(destination) {
+        setMenuOpen(false)
+        if (destination === 'home') {
+            backToSearch()
+            return
+        }
+        onNavigate(destination)
+    }
+
+    function NavigationMenu() {
+        return (
+            <div className="home-menu-wrap">
+                <button
+                    className="home-menu-button"
+                    type="button"
+                    aria-label="Open navigation menu"
+                    aria-expanded={menuOpen}
+                    aria-haspopup="menu"
+                    onClick={() => setMenuOpen((open) => !open)}
+                >
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                {menuOpen && (
+                    <nav className="home-menu-panel" aria-label="Main navigation" role="menu">
+                        {[
+                            ['home', 'Find a company'],
+                            ['research', 'Research'],
+                            ['history', 'History'],
+                            ['library', 'Followed companies'],
+                            ['settings', 'Settings'],
+                        ].map(([destination, label]) => (
+                            <button
+                                key={destination}
+                                type="button"
+                                role="menuitem"
+                                onClick={() => navigateFromMenu(destination)}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </nav>
+                )}
+            </div>
+        )}
 
     const filteredCompanies = companies.filter((company) =>
         `${company.name} ${company.ticker}`
@@ -139,7 +218,7 @@ export default function HomePage({ apiHealth, onCompanySelect, onToggleFollow, f
     }
 
     function navigate(destination) {
-        setNavigationOpen(false)
+        setMenuOpen(false)
         if (destination === 'home') {
             setSelectedCompany(null)
             setActiveCompanyTab('overview')
@@ -171,7 +250,7 @@ export default function HomePage({ apiHealth, onCompanySelect, onToggleFollow, f
 
                 <section className="company-detail" aria-labelledby="company-detail-name">
                     <div className="company-detail-heading">
-                        <span className="company-detail-initial" aria-hidden="true">{selectedCompany.initial}</span>
+                        <CompanyLogo company={selectedCompany} detail />
                         <div className="company-detail-identity">
                             <h1 id="company-detail-name">{selectedCompany.name}</h1>
                             <p>NSE: {selectedCompany.ticker}</p>
@@ -284,7 +363,7 @@ export default function HomePage({ apiHealth, onCompanySelect, onToggleFollow, f
                         </>
                     )}
                 </section>
-                {navigationOpen && <CompanyNavigationPanel onClose={() => setNavigationOpen(false)} onNavigate={navigate} />}
+                {navigationOpen && <CompanyNavigationPanel onClose={() => setMenuOpen(false)} onNavigate={navigate} />}
             </main>
         )
     }
@@ -293,11 +372,7 @@ export default function HomePage({ apiHealth, onCompanySelect, onToggleFollow, f
         <main className={`home-page theme-${theme}`}>
 
             <header className="home-nav">
-                <button className="home-menu-button" type="button" onClick={() => setNavigationOpen(true)} aria-label="Open navigation" aria-expanded={navigationOpen}>
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </button>
+                <NavigationMenu />
 
                 <div className="home-nav-title">Search</div>
 
@@ -309,15 +384,12 @@ export default function HomePage({ apiHealth, onCompanySelect, onToggleFollow, f
 
                 <div className="home-heading">
                     <h1>Find a Company</h1>
-                    <p>
-                        Search for a company (e.g. Reliance, TCS, HDFC...)
-                    </p>
                 </div>
 
                 <div className="home-search-box">
                     <input
                         type="text"
-                        placeholder="Search for a company (e.g. Reliance, TCS, HDFC...)"
+                        aria-label="Search companies by name or ticker"
                         value={search}
                         onChange={(event) => setSearch(event.target.value)}
                     />
@@ -350,9 +422,7 @@ export default function HomePage({ apiHealth, onCompanySelect, onToggleFollow, f
                         >
                             <div className="company-info">
 
-                                <div className="company-initial">
-                                    {company.initial}
-                                </div>
+                                <CompanyLogo company={company} />
 
                                 <div className="company-details">
                                     <div className="company-name">
@@ -381,7 +451,7 @@ export default function HomePage({ apiHealth, onCompanySelect, onToggleFollow, f
                 </div>
 
             </section>
-            {navigationOpen && <CompanyNavigationPanel onClose={() => setNavigationOpen(false)} onNavigate={navigate} />}
+            {navigationOpen && <CompanyNavigationPanel onClose={() => setMenuOpen(false)} onNavigate={navigate} />}
         </main>
     )
 }

@@ -51,6 +51,41 @@ class DocumentViewTests(TestCase):
         self.assertEqual(response.status_code, 404)
 
 
+class MarketMoversViewTests(TestCase):
+    def test_returns_stored_quotes_with_source_and_timestamp(self):
+        Bhavcopy.objects.create(
+            trad_dt='2026-04-29',
+            tckr_symb='RELIANCE',
+            isin='INE002A01018',
+            fin_instrm_nm='RELIANCE INDUSTRIES LTD',
+            cls_pric=Decimal('1425.40'),
+            prvs_clsg_pric=Decimal('1388.90'),
+            ttl_tradg_vol=30542143,
+            ttl_trf_val=Decimal('43315858969.90'),
+            scty_srs='EQ',
+        )
+
+        response = self.client.get('/api/market-movers/')
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['source'], 'NSE Bhavcopy (stored MySQL data)')
+        self.assertEqual(payload['as_of'], '2026-04-29')
+        self.assertTrue(payload['retrieved_at'])
+        self.assertEqual(len(payload['movers']), 5)
+
+        reliance = next(item for item in payload['movers'] if item['ticker'] == 'RELIANCE')
+        self.assertTrue(reliance['found'])
+        self.assertEqual(reliance['price'], 1425.4)
+        self.assertEqual(reliance['change_pct'], 2.63)
+        self.assertEqual(reliance['trade_date'], '2026-04-29')
+        self.assertTrue(reliance['retrieved_at'])
+
+        unavailable = next(item for item in payload['movers'] if item['ticker'] == 'TCS')
+        self.assertFalse(unavailable['found'])
+        self.assertIsNone(unavailable['price'])
+
+
 class ComparisonDataTests(TestCase):
     def test_returns_stored_fundamentals_with_source_and_period(self):
         CompanyFundamental.objects.create(
