@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ThemeToggle } from './shared/ARIAUI.jsx'
 
 const companies = [
     {
@@ -51,7 +52,7 @@ function TrendLine({ direction }) {
     )
 }
 
-export default function HomePage({ onCompanySelect }) {
+export default function HomePage({ onCompanySelect, theme, onToggleTheme }) {
     const [search, setSearch] = useState('')
 
     const filteredCompanies = companies.filter((company) =>
@@ -65,7 +66,7 @@ export default function HomePage({ onCompanySelect }) {
     }
 
     return (
-        <main className="home-page">
+        <main className={`home-page theme-${theme}`}>
 
             <header className="home-nav">
                 <button className="home-menu-button" type="button">
@@ -76,9 +77,7 @@ export default function HomePage({ onCompanySelect }) {
 
                 <div className="home-nav-title">Search</div>
 
-                <button className="home-theme-button" type="button">
-                    ◐
-                </button>
+                <ThemeToggle theme={theme} onToggle={onToggleTheme} />
             </header>
 
             <section className="home-content">

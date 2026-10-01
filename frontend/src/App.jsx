@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { askQuestion, healthCheck, mockMode } from './api/client.js'
 import { getSessionId } from './utils/session.js'
-import { BrandSymbol, Icon, StatusPill } from './shared/ARIAUI.jsx'
+import { BrandSymbol, Icon, StatusPill, ThemeToggle } from './shared/ARIAUI.jsx'
 import { LandingPage, LoginPage } from './features/auth/AuthFlow.jsx'
 import FollowedCompaniesView from './features/companies/FollowedCompaniesView.jsx'
 import ResearchHistoryView from './features/research/ResearchHistoryView.jsx'
@@ -237,11 +237,23 @@ export default function App() {
     }
 
     if (entryPage === 'landing') {
-        return <LandingPage onStart={() => setEntryPage('company-search')} />
+        return (
+            <LandingPage
+                onStart={() => setEntryPage('company-search')}
+                theme={theme}
+                onToggleTheme={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
+            />
+        )
     }
 
     if (entryPage === 'company-search') {
-        return <HomePage onCompanySelect={prepareCompanyResearch} />
+        return (
+            <HomePage
+                onCompanySelect={prepareCompanyResearch}
+                theme={theme}
+                onToggleTheme={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
+            />
+        )
     }
 
     return (
@@ -280,6 +292,10 @@ export default function App() {
                 </form>
 
                 <div className="command-actions">
+                    <ThemeToggle
+                        theme={theme}
+                        onToggle={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
+                    />
                     <StatusPill health={health} />
                 </div>
             </header>
@@ -296,6 +312,13 @@ export default function App() {
                         <div className="sidebar-scroll">
                             <div className="sidebar-label">WORKSPACE</div>
                             <nav className="side-navigation" aria-label="Workspace">
+                                <button
+                                    className="side-nav-item"
+                                    type="button"
+                                    onClick={() => setEntryPage('company-search')}
+                                >
+                                    <Icon name="home">⌂</Icon><span>Home</span>
+                                </button>
                                 <button className={`side-nav-item ${activeSection === 'research' ? 'active' : ''}`} type="button" aria-current={activeSection === 'research' ? 'page' : undefined} onClick={() => setActiveSection('research')}>
                                     <Icon name="chat">▤</Icon><span>Research</span>
                                 </button>
@@ -333,18 +356,6 @@ export default function App() {
 
                         </div>
                         <div className="sidebar-bottom">
-                            <div className="sidebar-preferences">
-                                <span>Appearance</span>
-                                <button
-                                    className="sidebar-theme-toggle"
-                                    type="button"
-                                    onClick={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
-                                    aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-                                >
-                                    <span aria-hidden="true">{theme === 'dark' ? '☾' : '☼'}</span>
-                                    {theme === 'dark' ? 'Dark' : 'Light'}
-                                </button>
-                            </div>
                             <div className="sidebar-status"><StatusPill health={health} /></div>
                             <p>Source-grounded financial research</p>
                         </div>

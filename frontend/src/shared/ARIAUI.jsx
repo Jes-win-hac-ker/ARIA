@@ -39,3 +39,19 @@ export function StatusPill({ health }) {
     </span>
   )
 }
+
+export function ThemeToggle({ theme, onToggle }) {
+  const nextTheme = theme === 'dark' ? 'light' : 'dark'
+
+  return (
+    <button
+      className="theme-toggle-button"
+      type="button"
+      onClick={onToggle}
+      aria-label={`Switch to ${nextTheme} mode`}
+      title={`Switch to ${nextTheme} mode`}
+    >
+      <span aria-hidden="true">{theme === 'dark' ? '☼' : '☾'}</span>
+    </button>
+  )
+}
