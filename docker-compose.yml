@@ -32,6 +32,8 @@ services:
     restart: unless-stopped
     command: >
       sh -c "python manage.py migrate --noinput &&
+             python manage.py load_market_data &&
+             python manage.py build_rag_index &&
              python manage.py collectstatic --noinput --clear &&
              gunicorn ARIA.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 60"
     environment: &web-env
@@ -45,6 +47,9 @@ services:
       MYSQL_USER: ${MYSQL_USER:-aria}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set in .env}
       TZ: ${TZ:-Asia/Kolkata}
+      ARIA_DATA_DIR: /app/data
+    volumes:
+      - ./data:/app/data:ro
     ports:
       - "${WEB_PORT:-8000}:8000"
     depends_on:
