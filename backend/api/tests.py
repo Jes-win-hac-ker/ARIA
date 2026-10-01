@@ -300,3 +300,36 @@ class AskEndpointTests(TestCase):
         resp_data = response.json()
         self.assertEqual(str(messages[0].correlation_id), resp_data['correlation_id'])
         self.assertEqual(str(messages[1].correlation_id), resp_data['correlation_id'])
+        for tc in tool_calls:
+            self.assertEqual(str(tc.correlation_id), resp_data['correlation_id'])
+
+    def test_ask_persists_correlation_id_on_messages_and_tool_calls(self):
+        """
+        POST to /api/ask/, extract correlation_id from JSON response, and assert
+        that at least one Message row—and when tools execute, a ToolCall row—exists
+        in MySQL carrying the exact same correlation_id.
+        """
+        response = self.client.post(
+            '/api/ask/',
+            data={'question': 'What was Reliance net profit margin?'},
+            content_type='application/json',
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        correlation_id = data.get('correlation_id')
+        self.assertTrue(correlation_id)
+
+        # Assert at least one Message row exists in MySQL carrying the same correlation_id
+        messages = Message.objects.filter(correlation_id=correlation_id)
+        self.assertGreaterEqual(messages.count(), 1)
+        roles = set(messages.values_list('role', flat=True))
+        self.assertIn('user', roles)
+        self.assertIn('assistant', roles)
+
+        # When tools execute, assert a ToolCall row exists carrying the same correlation_id
+        if data.get('tool_outputs'):
+            tool_calls = ToolCall.objects.filter(correlation_id=correlation_id)
+            self.assertGreaterEqual(tool_calls.count(), 1)
+            for tc in tool_calls:
+                self.assertEqual(str(tc.correlation_id), correlation_id)
+                self.assertIsNotNone(tc.tool_name)
