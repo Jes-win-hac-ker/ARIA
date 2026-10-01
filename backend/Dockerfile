@@ -27,10 +27,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     DJANGO_SETTINGS_MODULE=ARIA.settings
 
 # mariadb (libmariadb3) provides libmariadb.so.3 at runtime — the only
-# non-Python shared object mysqlclient needs. curl is for the healthcheck.
+# non-Python shared object mysqlclient needs. curl is for healthcheck,
+# libgomp1 is for faiss-cpu OpenMP multithreading.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libmariadb3 \
         curl \
+        libgomp1 \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --shell /usr/sbin/nologin aria
 
