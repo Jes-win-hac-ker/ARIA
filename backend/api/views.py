@@ -7,6 +7,7 @@ Follows AGENTS.md:
 - Full session, message, and tool-call persistence in MySQL.
 - Pydantic validation on every output.
 """
+import os
 import time
 import uuid
 from pathlib import Path
@@ -49,13 +50,28 @@ AVAILABLE_PDF_DOCUMENTS = frozenset({
 })
 
 
+def _resolve_document_path(filename: str) -> Path | None:
+    data_dir = os.environ.get('ARIA_DATA_DIR')
+    if data_dir and os.path.isdir(data_dir):
+        candidate = Path(data_dir) / filename
+        if candidate.is_file():
+            return candidate
+    candidate1 = Path(settings.BASE_DIR).parent / 'data' / filename
+    if candidate1.is_file():
+        return candidate1
+    candidate2 = Path(settings.BASE_DIR) / 'data' / filename
+    if candidate2.is_file():
+        return candidate2
+    return None
+
+
 def document(request, filename: str):
     """Serve only the public PDFs explicitly included in the research corpus."""
     if filename not in AVAILABLE_PDF_DOCUMENTS:
         raise Http404('Document not found')
 
-    document_path = Path(settings.BASE_DIR).parent / 'data' / filename
-    if not document_path.is_file():
+    document_path = _resolve_document_path(filename)
+    if not document_path:
         raise Http404('Document not found')
 
     response = FileResponse(document_path.open('rb'), content_type='application/pdf')
