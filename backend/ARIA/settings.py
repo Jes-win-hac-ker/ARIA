@@ -57,7 +57,11 @@ TEMPLATES = [
 WSGI_APPLICATION = 'ARIA.wsgi.application'
 
 # --- Database: MySQL 8 driven entirely by env vars (AGENTS.md section 6/12) ---
-DB_ENGINE = env('DJANGO_DB_ENGINE', 'mysql')
+# In Docker, MYSQL_HOST="db" is injected so it connects to MySQL container.
+# In local host development without MySQL env vars, fallback cleanly to sqlite.
+_default_engine = 'mysql' if env('MYSQL_HOST') else 'sqlite'
+DB_ENGINE = env('DJANGO_DB_ENGINE', _default_engine)
+
 if DB_ENGINE == 'sqlite':
     DATABASES = {
         'default': {
@@ -66,6 +70,15 @@ if DB_ENGINE == 'sqlite':
         }
     }
 else:
+    try:
+        import MySQLdb  # noqa
+    except ImportError:
+        try:
+            import pymysql
+            pymysql.install_as_MySQLdb()
+        except ImportError:
+            pass
+
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
