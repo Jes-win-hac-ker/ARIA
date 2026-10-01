@@ -28,5 +28,5 @@ class AgentResponse(BaseModel):
     tool_outputs: list[ToolOutput] = []
     warnings: list[str] = []
     token_usage: int = 0
-    # correlation_id: str  # TEMPORARILY REMOVED FOR CI FAIL-FAST VERIFICATION
+    correlation_id: str
     latency_ms: int = 0
