@@ -65,6 +65,12 @@ ARIA provides three deterministic tools with 100% verifiable outputs:
 | `financial_calculator` | Deterministic computation of margins, growth, D/E, P/E, CAGR | Python AST Evaluator (Zero LLM Math) | Formula, Input Operands, Timestamp |
 | `fundamentals_lookup` | Query closing prices, volume, P/E, market cap, and debt | MySQL `api_bhavcopy` & `api_companyfundamental` | Trade Date, Staleness Flag, Stored Cache Note |
 
+### Document Ingestion & RAG Architecture (Graceful Degradation)
+ARIA employs a two-tier graceful degradation parser pipeline in `backend/rag/indexer.py`:
+* **Tier 1 (Deep Document Understanding)**: Integrates **IBM Docling** (`DocumentConverter`) for extracting rich layout structure, headers, and complex financial tables.
+* **Tier 2 (High-Speed Fallback)**: Automatically falls back to **PyPDF** extraction when Docling is absent, in low-memory environments, or during high-throughput containerized deployments.
+* **FAISS Vector Indexing**: All extracted chunks are indexed with cosine similarity (`IndexFlatIP`), strictly preserving page locators (`Page X`), document titles, sources, and filing timestamps.
+
 ### Non-Negotiable Guardrails
 If a user submits advisory queries (*"Should I buy Reliance tomorrow?"*, *"Where will Nifty be next week?"*):
 * `refused = True` (100% refusal target)
