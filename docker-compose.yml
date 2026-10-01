@@ -48,6 +48,10 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-stockpass}
       TZ: ${TZ:-Asia/Kolkata}
       ARIA_DATA_DIR: /app/data
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      LLM_MODEL_NAME: ${LLM_MODEL_NAME:-gemini-2.5-flash}
+      LLM_TOKEN_CAP_PER_QUERY: ${LLM_TOKEN_CAP_PER_QUERY:-4000}
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
     volumes:
       - ./data:/app/data:ro
     ports:
