@@ -141,18 +141,23 @@ export default function HomePage({
     const [activeCompanyTab, setActiveCompanyTab] = useState('overview')
     const [reportingPeriod, setReportingPeriod] = useState('')
     const [menuOpen, setMenuOpen] = useState(false)
+    const [navigationOpen, setNavigationOpen] = useState(false)
 
     useEffect(() => {
-        if (!menuOpen) return undefined
+        if (!menuOpen && !navigationOpen) return undefined
         function closeOnEscape(event) {
-            if (event.key === 'Escape') setMenuOpen(false)
+            if (event.key === 'Escape') {
+                setMenuOpen(false)
+                setNavigationOpen(false)
+            }
         }
         window.addEventListener('keydown', closeOnEscape)
         return () => window.removeEventListener('keydown', closeOnEscape)
-    }, [menuOpen])
+    }, [menuOpen, navigationOpen])
 
     function navigateFromMenu(destination) {
         setMenuOpen(false)
+        setNavigationOpen(false)
         if (destination === 'home') {
             backToSearch()
             return
@@ -219,6 +224,7 @@ export default function HomePage({
 
     function navigate(destination) {
         setMenuOpen(false)
+        setNavigationOpen(false)
         if (destination === 'home') {
             setSelectedCompany(null)
             setActiveCompanyTab('overview')
@@ -363,7 +369,7 @@ export default function HomePage({
                         </>
                     )}
                 </section>
-                {navigationOpen && <CompanyNavigationPanel onClose={() => setMenuOpen(false)} onNavigate={navigate} />}
+                {navigationOpen && <CompanyNavigationPanel onClose={() => setNavigationOpen(false)} onNavigate={navigate} />}
             </main>
         )
     }
@@ -451,7 +457,7 @@ export default function HomePage({
                 </div>
 
             </section>
-            {navigationOpen && <CompanyNavigationPanel onClose={() => setMenuOpen(false)} onNavigate={navigate} />}
+            {navigationOpen && <CompanyNavigationPanel onClose={() => setNavigationOpen(false)} onNavigate={navigate} />}
         </main>
     )
 }
