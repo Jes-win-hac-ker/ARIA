@@ -7,9 +7,15 @@ import json
 import os
 import pickle
 from typing import Any
-import faiss
-import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
+
+try:
+    import faiss
+    import numpy as np
+    from sklearn.feature_extraction.text import TfidfVectorizer
+except ImportError:
+    faiss = None
+    np = None
+    TfidfVectorizer = None
 
 
 class VectorStore:

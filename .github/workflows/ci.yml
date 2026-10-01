@@ -15,7 +15,7 @@ jobs:
       GEMINI_API_KEY: dummy
       DJANGO_DB_ENGINE: sqlite
       DJANGO_DEBUG: "0"
-      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,testserver
       PYTHONPATH: backend
 
     steps:
@@ -31,7 +31,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install Django django-cors-headers djangorestframework pydantic python-dotenv whitenoise pytest pytest-django
+          pip install Django django-cors-headers djangorestframework pydantic python-dotenv whitenoise pytest pytest-django faiss-cpu pypdf scikit-learn
 
       - name: Run Guardrail Tests
         run: |

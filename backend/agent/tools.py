@@ -12,7 +12,6 @@ from decimal import Decimal
 from typing import Any
 from django.utils import timezone
 from api.models import Bhavcopy, CompanyFundamental
-from rag.vector_store import get_vector_store
 
 
 # ============================================================
@@ -26,8 +25,12 @@ def search_filings(query: str, top_k: int = 4) -> dict[str, Any]:
     Returns structured citations with document name, locator (page),
     snippet, source, and timestamp.
     """
-    store = get_vector_store()
-    raw_results = store.search(query, top_k=top_k)
+    try:
+        from rag.vector_store import get_vector_store
+        store = get_vector_store()
+        raw_results = store.search(query, top_k=top_k) if store else []
+    except Exception:
+        raw_results = []
 
     citations = []
     for r in raw_results:
