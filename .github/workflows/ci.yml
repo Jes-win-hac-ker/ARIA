@@ -22,6 +22,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Scan for committed secrets
+        run: |
+          # grep -RInE '(AIzaSy|sk-|password\s*=\s*['\"])'
+          echo "Scanning backend for hardcoded secrets or credentials..."
+          ! grep -RInE "(AIzaSy|sk-|password\s*=\s*['\"])" backend/ --exclude="chunks_metadata.json"
+
       - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
@@ -40,3 +46,26 @@ jobs:
       - name: Run API Contract Tests
         run: |
           pytest backend/api/test_contract.py -v
+
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
