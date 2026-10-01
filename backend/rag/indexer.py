@@ -48,6 +48,36 @@ KNOWN_DOCUMENTS = {
         'timestamp': '2026-04-24T17:30:00+05:30',
         'doc_type': 'Investor Presentation',
     },
+    'RIL_Annual_Report_FY24.pdf': {
+        'title': 'Reliance Industries Limited - Integrated Annual Report FY 2023-24',
+        'source': 'BSE/NSE Annual Regulatory Filing - Reliance Industries Limited',
+        'timestamp': '2024-08-07T12:00:00+05:30',
+        'doc_type': 'Annual Report (MD&A & Financial Statements)',
+    },
+    'RIL_Annual_Report_FY23.pdf': {
+        'title': 'Reliance Industries Limited - Integrated Annual Report FY 2022-23',
+        'source': 'BSE/NSE Annual Regulatory Filing - Reliance Industries Limited',
+        'timestamp': '2023-08-05T12:00:00+05:30',
+        'doc_type': 'Annual Report (MD&A & Financial Statements)',
+    },
+    'RIL_Concall_Transcript_Q4_FY24.pdf': {
+        'title': 'Reliance Industries Limited - Earnings Call Discussion Transcript Q4 & FY 2023-24',
+        'source': 'Investor Relations Concall Transcript - Reliance Industries Limited',
+        'timestamp': '2024-04-22T20:30:00+05:30',
+        'doc_type': 'Earnings Call Transcript',
+    },
+    'RIL_Concall_Transcript_Q3_FY24.pdf': {
+        'title': 'Reliance Industries Limited - Earnings Call Discussion Transcript Q3 FY 2023-24',
+        'source': 'Investor Relations Concall Transcript - Reliance Industries Limited',
+        'timestamp': '2024-01-19T20:30:00+05:30',
+        'doc_type': 'Earnings Call Transcript',
+    },
+    'RIL_Concall_Transcript_Q4_FY23.pdf': {
+        'title': 'Reliance Industries Limited - Earnings Call Discussion Transcript Q4 & FY 2022-23',
+        'source': 'Investor Relations Concall Transcript - Reliance Industries Limited',
+        'timestamp': '2023-04-21T20:30:00+05:30',
+        'doc_type': 'Earnings Call Transcript',
+    },
 }
 
 
