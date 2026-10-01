@@ -140,6 +140,7 @@ def route_and_execute(question: str) -> tuple[str, list[ToolOutput], list[Citati
                         document=c.get("document", "Reliance_Q3_FY24_Transcript.pdf"),
                         locator=c.get("locator", "Page 14, Section 3.2"),
                         snippet=c.get("snippet", "Management highlighted margin dynamics, operating efficiency, and input cost trends."),
+                        timestamp=c.get("timestamp", timestamp),
                     )
                 )
         except Exception:
@@ -151,6 +152,7 @@ def route_and_execute(question: str) -> tuple[str, list[ToolOutput], list[Citati
                     document="Reliance_Q3_FY24_Transcript.pdf",
                     locator="Page 14, Section 3.2",
                     snippet="Management noted input cost headwinds and margin pressure in retail, while upstream margins remained resilient.",
+                    timestamp=timestamp,
                 )
             )
 

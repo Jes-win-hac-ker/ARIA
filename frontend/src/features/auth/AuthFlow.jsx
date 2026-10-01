@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BrandSymbol, ThemeToggle } from '../../shared/ARIAUI.jsx'
+import { ApiStatusDot, BrandSymbol, ThemeToggle } from '../../shared/ARIAUI.jsx'
 
 function BrandMark() {
     return (
@@ -9,7 +9,7 @@ function BrandMark() {
     )
 }
 
-export function LoginPage({ onLogin }) {
+export function LoginPage({ apiHealth, onLogin }) {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [passwordVisible, setPasswordVisible] = useState(false)
@@ -22,6 +22,7 @@ export function LoginPage({ onLogin }) {
 
     return (
         <main className="auth-page">
+            <ApiStatusDot className="auth-api-status" health={apiHealth} />
             <section className="auth-card" aria-labelledby="login-heading">
                 <a className="auth-brand" href="/" aria-label="ARIA home">
                     <BrandMark />
@@ -113,7 +114,7 @@ export function LoginPage({ onLogin }) {
     )
 }
 
-export function LandingPage({ onStart, theme, onToggleTheme }) {
+export function LandingPage({ apiHealth, onStart, theme, onToggleTheme }) {
     return (
         <main className={`landing-page theme-${theme}`}>
             <header className="landing-nav">
@@ -125,6 +126,7 @@ export function LandingPage({ onStart, theme, onToggleTheme }) {
                     </div>
                 </div>
                 <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+                <ApiStatusDot health={apiHealth} />
             </header>
 
             <section className="landing-hero">
@@ -139,16 +141,38 @@ export function LandingPage({ onStart, theme, onToggleTheme }) {
                     </div>
                 </div>
                 <div className="landing-visual">
-                    <div className="research-preview">
-                        <div className="preview-header">
-                            <span>RESEARCH PRINCIPLES</span>
-                            <span className="preview-live"><i />SOURCE-LED</span>
+                    <div className="ticker-preview">
+                        <div className="ticker-preview-header">
+                            <span>WATCHED TICKERS</span>
+                            <button type="button" onClick={onStart} title="Open the research workspace to add a ticker">＋ Add</button>
                         </div>
-                        <div className="preview-content">
-                            <div className="preview-row"><span>01</span><strong>Retrieve public disclosures</strong></div>
-                            <div className="preview-row"><span>02</span><strong>Trace every factual claim</strong></div>
-                            <div className="preview-row"><span>03</span><strong>Keep calculations deterministic</strong></div>
+                        <div className="ticker-preview-list">
+                            <article className="ticker-row">
+                                <span className="ticker-symbol reliance" aria-hidden="true">RIL</span>
+                                <span className="ticker-name">Reliance</span>
+                                <span className="ticker-price">Unavailable</span>
+                                <span className="ticker-change">Quote source not configured</span>
+                            </article>
+                            <article className="ticker-row">
+                                <span className="ticker-symbol apple" aria-hidden="true">AAPL</span>
+                                <span className="ticker-name">Apple Inc.</span>
+                                <span className="ticker-price">Unavailable</span>
+                                <span className="ticker-change">Quote source not configured</span>
+                            </article>
+                            <article className="ticker-row">
+                                <span className="ticker-symbol microsoft" aria-hidden="true">MSFT</span>
+                                <span className="ticker-name">Microsoft</span>
+                                <span className="ticker-price">Unavailable</span>
+                                <span className="ticker-change">Quote source not configured</span>
+                            </article>
+                            <article className="ticker-row">
+                                <span className="ticker-symbol nvidia" aria-hidden="true">NVDA</span>
+                                <span className="ticker-name">NVIDIA</span>
+                                <span className="ticker-price">Unavailable</span>
+                                <span className="ticker-change">Quote source not configured</span>
+                            </article>
                         </div>
+                        <p className="ticker-preview-note">No prices or daily moves shown without a permitted, timestamped source.</p>
                     </div>
                 </div>
             </section>

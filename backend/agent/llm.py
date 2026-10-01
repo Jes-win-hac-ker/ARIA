@@ -48,6 +48,7 @@ def _build_context_prompt(
         for idx, c in enumerate(citations, 1):
             lines.append(f"Citation [{idx}]:")
             lines.append(f"  Document: {c.document} | Locator: {c.locator}")
+            lines.append(f"  Retrieved: {c.timestamp or 'Timestamp unavailable'}")
             lines.append(f"  Excerpt: {c.snippet}")
 
     lines.append("\n--- END OF VERIFIED CONTEXT ---")

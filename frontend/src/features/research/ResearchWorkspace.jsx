@@ -70,7 +70,6 @@ export default function ResearchWorkspace({
                     <div className="inline-citations">
                       <div className="inline-citations-heading">
                         <span className="overline">PRIMARY SOURCES</span>
-                        <button type="button" onClick={() => setActiveTab('sources')}>Open source drawer ↗</button>
                       </div>
                       <div className="citation-chips">
                         {message.response.citations.map((citation, index) => {
@@ -80,13 +79,18 @@ export default function ResearchWorkspace({
                               className={selectedCitation === citationId ? 'citation-chip active' : 'citation-chip'}
                               key={citationId}
                               type="button"
+                              aria-expanded={selectedCitation === citationId && activeTab === 'sources'}
                               onClick={() => {
-                                setSelectedCitation(citationId)
+                                setSelectedCitation((current) => current === citationId && activeTab === 'sources' ? null : citationId)
                                 setActiveTab('sources')
                               }}
-                              aria-label={`Open citation ${index + 1}: ${citation.document}, ${citation.locator}`}
+                              aria-label={`Open citation ${index + 1}: ${citation.document}, ${citation.locator}, retrieved ${citation.timestamp || 'timestamp unavailable'}`}
                             >
-                              <span>[{index + 1}]</span>{citation.document}
+                              <span className="citation-chip-index">[{index + 1}]</span>
+                              <span className="citation-chip-document">{citation.document}</span>
+                              <span className="citation-chip-meta">
+                                {citation.locator || 'Location unavailable'} · Retrieved {citation.timestamp || 'Timestamp unavailable'}
+                              </span>
                             </button>
                           )
                         })}
@@ -125,7 +129,7 @@ export default function ResearchWorkspace({
           <div ref={threadEndRef} />
         </div>
 
-        <EvidenceTabs messages={messages} activeTab={activeTab} setActiveTab={setActiveTab} />
+        <EvidenceTabs messages={messages} activeTab={activeTab} setActiveTab={setActiveTab} selectedCitation={selectedCitation} />
 
         <form className="composer" onSubmit={ask}>
           <label className="sr-only" htmlFor="research-composer">Ask a research question</label>
@@ -156,13 +160,17 @@ export default function ResearchWorkspace({
         </form>
       </section>
 
-      <EvidenceInspector
-        messages={messages}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        selectedCitation={selectedCitation}
-        setSelectedCitation={setSelectedCitation}
-      />
+      {(activeTab === 'tools' || (activeTab === 'sources' && selectedCitation)) && (
+        <EvidenceInspector
+          messages={messages}
+          activeTab={activeTab}
+          selectedCitation={selectedCitation}
+          onClose={() => {
+            setSelectedCitation(null)
+            setActiveTab('sources')
+          }}
+        />
+      )}
     </div>
   )
 }

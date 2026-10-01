@@ -3,11 +3,24 @@ import pytest
 from rest_framework.test import APIClient
 
 from api.schemas import AgentResponse
+from api.schemas import Citation
 
 
 @pytest.fixture
 def api_client():
     return APIClient()
+
+
+def test_citation_schema_preserves_retrieval_timestamp():
+    timestamp = "2026-10-01T12:00:00+00:00"
+    citation = Citation(
+        document="annual-report.pdf",
+        locator="Page 12",
+        snippet="Reported results.",
+        timestamp=timestamp,
+    )
+
+    assert citation.model_dump()["timestamp"] == timestamp
 
 
 @pytest.mark.django_db

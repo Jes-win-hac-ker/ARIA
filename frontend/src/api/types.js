@@ -6,9 +6,10 @@
 
 /**
  * @typedef {Object} Citation
- * @property {string} [title]
- * @property {string} [url]
- * @property {string} [source]
+ * @property {string} document
+ * @property {string} locator
+ * @property {string} snippet
+ * @property {string|null} [timestamp]
  */
 
 /**

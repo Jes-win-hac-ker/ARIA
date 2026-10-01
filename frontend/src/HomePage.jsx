@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ThemeToggle } from './shared/ARIAUI.jsx'
+import { ApiStatusDot, ThemeToggle } from './shared/ARIAUI.jsx'
 
 const companies = [
     {
@@ -52,7 +52,7 @@ function TrendLine({ direction }) {
     )
 }
 
-export default function HomePage({ onCompanySelect, theme, onToggleTheme }) {
+export default function HomePage({ apiHealth, onCompanySelect, theme, onToggleTheme }) {
     const [search, setSearch] = useState('')
 
     const filteredCompanies = companies.filter((company) =>
@@ -78,6 +78,7 @@ export default function HomePage({ onCompanySelect, theme, onToggleTheme }) {
                 <div className="home-nav-title">Search</div>
 
                 <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+                <ApiStatusDot className="home-api-status" health={apiHealth} />
             </header>
 
             <section className="home-content">
