@@ -34,7 +34,7 @@ from .memory import (
     record_tool_call,
     record_user_message,
 )
-from .models import Bhavcopy, ChatSession
+from .models import Bhavcopy, ChatSession, CompanyFundamental
 from .schemas import AgentResponse, Citation, ToolOutput
 
 AVAILABLE_PDF_DOCUMENTS = frozenset({
@@ -61,6 +61,38 @@ def document(request, filename: str):
     response = FileResponse(document_path.open('rb'), content_type='application/pdf')
     response['Content-Disposition'] = f'inline; filename="{filename}"'
     return response
+
+
+@api_view(['GET'])
+@permission_classes([])
+def comparison_data(request):
+    """Return stored fundamentals for deterministic company/year comparisons."""
+    numeric_fields = (
+        'revenue_cr',
+        'net_profit_cr',
+        'eps',
+        'market_cap_cr',
+        'debt_to_equity',
+        'roe_pct',
+        'dividend_yield_pct',
+        'operating_margin_pct',
+    )
+    records = []
+    for record in CompanyFundamental.objects.order_by('company_name', 'fiscal_year'):
+        item = {
+            'ticker': record.tckr_symb,
+            'company_name': record.company_name,
+            'fiscal_year': record.fiscal_year,
+            'as_of_date': record.as_of_date.isoformat(),
+            'source': record.source,
+        }
+        item.update({
+            field: float(value) if (value := getattr(record, field)) is not None else None
+            for field in numeric_fields
+        })
+        records.append(item)
+
+    return Response({'records': records})
 
 
 def _safe_fallback(correlation_id: str, reason: str) -> dict:

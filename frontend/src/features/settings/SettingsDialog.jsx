@@ -79,7 +79,7 @@ export default function SettingsDialog({
           {privacyOpen && (
             <div className="privacy-policy-copy">
               <p><strong>Questions and responses.</strong> Submitted questions are sent to the configured ARIA API unless mock mode is enabled. The current backend creates a MySQL session record containing a correlation ID and token-usage counter; it does not currently store question or response text in that model. History remains in page memory and is not saved.</p>
-              <p><strong>Followed companies and theme.</strong> These preferences are stored in this browser’s local storage and are not sent to the API by this interface.</p>
+              <p><strong>Saved reports, followed companies, and theme.</strong> Saved report names, corpus filenames, and save dates, followed company names, tickers, and follow dates, and the theme preference are stored in this browser’s local storage. Question history remains in page memory and is not saved. These saved-item details are not sent to the API by this interface.</p>
               <p><strong>Accounts and third parties.</strong> Authentication and a fundamentals-data provider are not configured. Do not enter sensitive or personal financial information.</p>
             </div>
           )}

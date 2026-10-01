@@ -32,6 +32,23 @@ function readFollowedCompanies() {
     }
 }
 
+function readSavedReports() {
+    try {
+        const stored = JSON.parse(window.localStorage.getItem('aria-saved-reports') || '[]')
+        if (!Array.isArray(stored)) return []
+        return stored.filter(
+            (report) =>
+                report &&
+                typeof report.filename === 'string' &&
+                typeof report.companyName === 'string' &&
+                typeof report.title === 'string' &&
+                typeof report.savedAt === 'string',
+        )
+    } catch {
+        return []
+    }
+}
+
 export default function App() {
     const [entryPage, setEntryPage] = useState('login')
     const [health, setHealth] = useState('checking')
@@ -39,7 +56,7 @@ export default function App() {
     const [activeSection, setActiveSection] = useState('research')
     const [theme, setTheme] = useState(readStoredTheme)
     const [followedCompanies, setFollowedCompanies] = useState(readFollowedCompanies)
-    const [selectedCompanies, setSelectedCompanies] = useState([])
+    const [savedReports, setSavedReports] = useState(readSavedReports)
     const [companyFormOpen, setCompanyFormOpen] = useState(false)
     const [companyName, setCompanyName] = useState('')
     const [companyTicker, setCompanyTicker] = useState('')
@@ -49,6 +66,7 @@ export default function App() {
     const [question, setQuestion] = useState('')
     const [command, setCommand] = useState('')
     const [messages, setMessages] = useState([])
+    const [researchCompany, setResearchCompany] = useState(null)
     const [error, setError] = useState(null)
     const [loading, setLoading] = useState(false)
     const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -82,6 +100,14 @@ export default function App() {
             setSettingsNotice('Followed companies could not be saved in this browser.')
         }
     }, [followedCompanies])
+
+    useEffect(() => {
+        try {
+            window.localStorage.setItem('aria-saved-reports', JSON.stringify(savedReports))
+        } catch {
+            setSettingsNotice('Saved reports could not be stored in this browser.')
+        }
+    }, [savedReports])
 
     useEffect(() => {
         threadEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
@@ -129,9 +155,12 @@ export default function App() {
         setCommand('')
         setSelectedCitation(null)
         setActiveTab('sources')
+        const company = researchCompany
+        setResearchCompany(null)
         setMessages((current) => [...current, {
             id: messageId,
             question: submittedQuestion,
+            company,
             response: null,
             createdAt: new Date().toISOString(),
         }])
@@ -158,6 +187,7 @@ export default function App() {
         setError(null)
         setQuestion('')
         setCommand('')
+        setResearchCompany(null)
         setSelectedCitation(null)
         setActiveTab('sources')
         composerRef.current?.focus()
@@ -178,37 +208,45 @@ export default function App() {
             return
         }
 
-        setFollowedCompanies((current) => [...current, { name, ticker }])
-        setSelectedCompanies((current) => [...current, ticker])
+        setFollowedCompanies((current) => [...current, { name, ticker, followedAt: new Date().toISOString() }])
         setCompanyName('')
         setCompanyTicker('')
         setCompanyFormOpen(false)
         setSettingsNotice(`${name} was added to this browser’s followed companies.`)
     }
 
-    function toggleCompanySelection(ticker) {
-        setSelectedCompanies((current) =>
-            current.includes(ticker)
-                ? current.filter((item) => item !== ticker)
-                : current.length < 3
-                    ? [...current, ticker]
-                    : current,
-        )
-    }
-
     function toggleCompanyFollow(company) {
         const isFollowed = followedCompanies.some((item) => item.ticker === company.ticker)
         if (isFollowed) {
             setFollowedCompanies((current) => current.filter((item) => item.ticker !== company.ticker))
-            setSelectedCompanies((current) => current.filter((ticker) => ticker !== company.ticker))
             return
         }
 
-        setFollowedCompanies((current) => [...current, { name: company.name, ticker: company.ticker }])
+        setFollowedCompanies((current) => [...current, { name: company.name, ticker: company.ticker, followedAt: new Date().toISOString() }])
+    }
+
+    function toggleSavedReport(company, document) {
+        setSavedReports((current) => {
+            if (current.some((report) => report.filename === document.filename)) {
+                return current.filter((report) => report.filename !== document.filename)
+            }
+
+            return [...current, {
+                ...document,
+                companyName: company.name,
+                companyTicker: company.ticker,
+                savedAt: new Date().toISOString(),
+            }]
+        })
     }
 
     function prepareCompanyResearch(company) {
         setActiveSection('research')
+        setResearchCompany({
+            name: company.name,
+            ticker: company.ticker,
+            initial: company.initial || company.name?.[0] || company.ticker?.[0],
+        })
         setQuestion(`Summarize the latest available public disclosures and management commentary for ${company.name} (${company.ticker}). Include citations and clearly state the source and retrieval time. Do not provide investment advice or price predictions.`)
         setEntryPage('workspace')
         composerRef.current?.focus()
@@ -221,10 +259,12 @@ export default function App() {
             setSettingsOpen(true)
             return
         }
+
         if (destination === 'home') {
             setEntryPage('company-search')
             return
         }
+
         setActiveSection(destination)
         setEntryPage('workspace')
     }
@@ -236,6 +276,7 @@ export default function App() {
         const companyNames = companies.map((company) => `${company.name} (${company.ticker})`).join(' and ')
         setQuestion(`Compare ${companyNames} using only retrieved public filings and management commentary. Cite each source, identify the reporting period, and state when data is unavailable. Do not calculate financial metrics or provide investment advice.`)
         composerRef.current?.focus()
+    }
     }
 
     function goToLogin() {
@@ -258,7 +299,6 @@ export default function App() {
 
     function removeFollowedCompany(company) {
         setFollowedCompanies((current) => current.filter((item) => item.ticker !== company.ticker))
-        setSelectedCompanies((current) => current.filter((ticker) => ticker !== company.ticker))
     }
 
     function openResearchFromHistory(messageId) {
@@ -297,6 +337,9 @@ export default function App() {
                 onCompanySelect={prepareCompanyResearch}
                 onToggleFollow={toggleCompanyFollow}
                 followedCompanies={followedCompanies}
+                savedReports={savedReports}
+                onToggleSaveReport={toggleSavedReport}
+                onNavigate={navigateFromCompanyPage}
                 theme={theme}
                 onToggleTheme={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
                 onNavigate={navigateFromCompanyMenu}
@@ -396,7 +439,6 @@ export default function App() {
                     {activeSection === 'library' ? (
                         <FollowedCompaniesView
                             followedCompanies={followedCompanies}
-                            selectedCompanies={selectedCompanies}
                             companyFormOpen={companyFormOpen}
                             setCompanyFormOpen={setCompanyFormOpen}
                             companyName={companyName}
@@ -404,16 +446,19 @@ export default function App() {
                             companyTicker={companyTicker}
                             setCompanyTicker={setCompanyTicker}
                             onAddCompany={addFollowedCompany}
-                            onCompare={prepareCompanyComparison}
-                            onToggleCompany={toggleCompanySelection}
                             onResearchCompany={prepareCompanyResearch}
                             onRemoveCompany={removeFollowedCompany}
                         />
                     ) : activeSection === 'history' ? (
                         <ResearchHistoryView
                             messages={messages}
+                            followedCompanies={followedCompanies}
+                            savedReports={savedReports}
                             onNewResearch={startNewResearch}
                             onOpenResearch={openResearchFromHistory}
+                            onResearchCompany={prepareCompanyResearch}
+                            onRemoveFollowedCompany={removeFollowedCompany}
+                            onRemoveSavedReport={(filename) => setSavedReports((current) => current.filter((report) => report.filename !== filename))}
                         />
                     ) : (
                         <ResearchWorkspace
