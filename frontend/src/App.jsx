@@ -1,243 +1,393 @@
-import { useState } from 'react'
-import ResearchWorkspace from './ResearchWorkspace.jsx'
+import { useEffect, useRef, useState } from 'react'
+import { askQuestion, healthCheck, mockMode } from './api/client.js'
+import { getSessionId } from './utils/session.js'
+import { BrandSymbol, Icon, StatusPill } from './shared/ARIAUI.jsx'
+import FollowedCompaniesView from './features/companies/FollowedCompaniesView.jsx'
+import ResearchHistoryView from './features/research/ResearchHistoryView.jsx'
+import ResearchWorkspace from './features/research/ResearchWorkspace.jsx'
+import SettingsDialog from './features/settings/SettingsDialog.jsx'
 
-function BrandMark() {
-    return (
-        <div className="auth-brand-mark">
-            <svg viewBox="0 0 64 64" aria-hidden="true">
-                <defs>
-                    <linearGradient id="aria-main" x1="18" y1="44" x2="47" y2="13">
-                        <stop offset="0" stopColor="#28623B" />
-                        <stop offset="1" stopColor="#99B94B" />
-                    </linearGradient>
-
-                    <linearGradient id="aria-secondary" x1="26" y1="53" x2="48" y2="30">
-                        <stop offset="0" stopColor="#92A94F" />
-                        <stop offset="1" stopColor="#C0D57A" />
-                    </linearGradient>
-                </defs>
-
-                <path
-                    d="M8 34c11 2 22 3 30-2 8-5 13-13 18-23l6-3-2 15-4-5c-5 9-10 15-18 18-9 4-20 1-30 0Z"
-                    fill="url(#aria-main)"
-                />
-
-                <path
-                    d="M18 47c11 2 23-3 31-16l4-8c-4 12-12 23-23 27-7 2-14 1-20-2Z"
-                    fill="url(#aria-secondary)"
-                />
-            </svg>
-        </div>
-    )
+function readStoredTheme() {
+  try {
+    return window.localStorage.getItem('aria-theme') === 'dark' ? 'dark' : 'light'
+  } catch {
+    return 'light'
+  }
 }
 
-function LoginPage({ onLogin }) {
-    const [email, setEmail] = useState('')
-    const [password, setPassword] = useState('')
-
-    function handleSubmit(event) {
-        event.preventDefault()
-
-        // Frontend-only login for now.
-        // Real authentication can be connected to the backend later.
-        onLogin()
-    }
-
-    return (
-        <main className="auth-page">
-            <div className="auth-card">
-
-                <div className="auth-brand">
-                    <BrandMark />
-                    <div>
-                        <div className="auth-logo">ARIA</div>
-                        <div className="auth-tagline">
-                            ASK · RETRIEVE · INTERPRET · AUGMENT
-                        </div>
-                    </div>
-                </div>
-
-                <div className="auth-heading">
-                    <span className="auth-overline">RESEARCH WORKSPACE</span>
-                    <h1>Welcome back.</h1>
-                    <p>
-                        Sign in to continue your source-grounded financial research.
-                    </p>
-                </div>
-
-                <form className="auth-form" onSubmit={handleSubmit}>
-                    <label>
-                        Email address
-                        <input
-                            type="email"
-                            placeholder="you@example.com"
-                            value={email}
-                            onChange={(event) => setEmail(event.target.value)}
-                            required
-                        />
-                    </label>
-
-                    <label>
-                        Password
-                        <input
-                            type="password"
-                            placeholder="Enter your password"
-                            value={password}
-                            onChange={(event) => setPassword(event.target.value)}
-                            required
-                        />
-                    </label>
-
-                    <div className="auth-options">
-                        <label className="remember-option">
-                            <input type="checkbox" />
-                            <span>Remember me</span>
-                        </label>
-
-                        <button type="button" className="text-button">
-                            Forgot password?
-                        </button>
-                    </div>
-
-                    <button className="primary-auth-button" type="submit">
-                        Sign in
-                        <span>→</span>
-                    </button>
-                </form>
-
-                <div className="auth-divider">
-                    <span>OR</span>
-                </div>
-
-                <button
-                    className="secondary-auth-button"
-                    type="button"
-                    onClick={onLogin}
-                >
-                    Continue as demo user
-                </button>
-
-                <p className="auth-footer">
-                    Don't have an account? <button type="button">Request access</button>
-                </p>
-            </div>
-
-            <div className="auth-side-note">
-                <span>TRACEABLE RESEARCH</span>
-                <p>Every fact should have a source.</p>
-            </div>
-        </main>
+function readFollowedCompanies() {
+  try {
+    const stored = JSON.parse(window.localStorage.getItem('aria-followed-companies') || '[]')
+    if (!Array.isArray(stored)) return []
+    return stored.filter(
+      (company) =>
+        company &&
+        typeof company.name === 'string' &&
+        typeof company.ticker === 'string',
     )
-}
-
-function LandingPage({ onStart }) {
-    return (
-        <main className="landing-page">
-
-            <header className="landing-nav">
-                <div className="landing-brand">
-                    <BrandMark />
-
-                    <div>
-                        <strong>ARIA</strong>
-                        <span>ASK · RETRIEVE · INTERPRET · AUGMENT</span>
-                    </div>
-                </div>
-
-            </header>
-
-            <section className="landing-hero">
-
-                <div className="landing-copy">
-                    <span className="auth-overline">
-                        FINANCIAL RESEARCH INTELLIGENCE
-                    </span>
-
-                    <h1>
-                        Research with
-                        <br />
-                        <em>evidence.</em>
-                    </h1>
-
-                    <p>
-                        ARIA helps you investigate companies, filings and financial
-                        concepts through source-grounded research and traceable evidence.
-                    </p>
-
-                    <div className="landing-actions">
-                        <button
-                            className="landing-primary-button"
-                            onClick={onStart}
-                        >
-                            Start researching
-                            <span>→</span>
-                        </button>
-
-                    </div>
-                </div>
-
-                <div className="landing-visual">
-                    <div className="ticker-preview">
-                        <div className="ticker-preview-header">
-                            <span>WATCHED TICKERS</span>
-                            <button type="button">+ Add</button>
-                        </div>
-
-                        <div className="ticker-row">
-                            <span className="ticker-symbol reliance">RIL</span>
-                            <span className="ticker-name">Reliance</span>
-                            <span className="ticker-price">₹2,994.20</span>
-                            <span className="ticker-change">(+1.4%)</span>
-                        </div>
-
-                        <div className="ticker-row">
-                            <span className="ticker-symbol apple">AAPL</span>
-                            <span className="ticker-name">Apple Inc.</span>
-                            <span className="ticker-price">$182.40</span>
-                            <span className="ticker-change">(+0.8%)</span>
-                        </div>
-
-                        <div className="ticker-row">
-                            <span className="ticker-symbol microsoft">MSFT</span>
-                            <span className="ticker-name">Microsoft</span>
-                            <span className="ticker-price">$415.20</span>
-                            <span className="ticker-change">(+2.1%)</span>
-                        </div>
-
-                        <div className="ticker-row">
-                            <span className="ticker-symbol nvidia">NVDA</span>
-                            <span className="ticker-name">NVIDIA</span>
-                            <span className="ticker-price">$880.00</span>
-                            <span className="ticker-change">(+3.7%)</span>
-                        </div>
-                    </div>
-                </div>
-
-            </section>
-
-
-        </main>
-    )
+  } catch {
+    return []
+  }
 }
 
 export default function App() {
-    const [page, setPage] = useState('login')
+  const [health, setHealth] = useState('checking')
+  const [sessionId] = useState(getSessionId)
+  const [activeSection, setActiveSection] = useState('research')
+  const [theme, setTheme] = useState(readStoredTheme)
+  const [followedCompanies, setFollowedCompanies] = useState(readFollowedCompanies)
+  const [selectedCompanies, setSelectedCompanies] = useState([])
+  const [companyFormOpen, setCompanyFormOpen] = useState(false)
+  const [companyName, setCompanyName] = useState('')
+  const [companyTicker, setCompanyTicker] = useState('')
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [privacyOpen, setPrivacyOpen] = useState(false)
+  const [settingsNotice, setSettingsNotice] = useState('')
+  const [question, setQuestion] = useState('')
+  const [command, setCommand] = useState('')
+  const [messages, setMessages] = useState([])
+  const [error, setError] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [activeTab, setActiveTab] = useState('sources')
+  const [selectedCitation, setSelectedCitation] = useState(null)
+  const composerRef = useRef(null)
+  const threadEndRef = useRef(null)
 
-    if (page === 'login') {
-        return (
-            <LoginPage
-                onLogin={() => setPage('landing')}
-            />
-        )
+  useEffect(() => {
+    healthCheck()
+      .then((data) => setHealth(data.status === 'ok' && data.database ? 'connected' : 'degraded'))
+      .catch(() => setHealth('unreachable'))
+  }, [])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('aria-theme', theme)
+    } catch {
+      setSettingsNotice('Theme preference could not be saved in this browser.')
+    }
+    document.querySelector('meta[name="theme-color"]')?.setAttribute(
+      'content',
+      theme === 'dark' ? '#191d20' : '#f5f4f0',
+    )
+  }, [theme])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('aria-followed-companies', JSON.stringify(followedCompanies))
+    } catch {
+      setSettingsNotice('Followed companies could not be saved in this browser.')
+    }
+  }, [followedCompanies])
+
+  useEffect(() => {
+    threadEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  }, [messages, loading, error])
+
+  useEffect(() => {
+    function handleShortcut(event) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'b') {
+        event.preventDefault()
+        setSidebarOpen((open) => !open)
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        composerRef.current?.focus()
+      }
+    }
+    window.addEventListener('keydown', handleShortcut)
+    return () => window.removeEventListener('keydown', handleShortcut)
+  }, [])
+
+  useEffect(() => {
+    if (!settingsOpen) return undefined
+    function closeOnEscape(event) {
+      if (event.key === 'Escape') {
+        setSettingsOpen(false)
+        setPrivacyOpen(false)
+      }
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [settingsOpen])
+
+  async function ask(event) {
+    event?.preventDefault()
+    const submittedQuestion = (question || command).trim()
+    if (!submittedQuestion || loading) return
+
+    const messageId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`
+    setError(null)
+    setQuestion('')
+    setCommand('')
+    setMessages((current) => [...current, {
+      id: messageId,
+      question: submittedQuestion,
+      response: null,
+      createdAt: new Date().toISOString(),
+    }])
+    setLoading(true)
+
+    try {
+      const result = await askQuestion(submittedQuestion)
+      setMessages((current) =>
+        current.map((message) => (message.id === messageId ? { ...message, response: result } : message)),
+      )
+      if (result.citations?.length) {
+        setSelectedCitation(`${messageId}-0`)
+        setActiveTab('sources')
+      } else {
+        setSelectedCitation(null)
+      }
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : String(requestError))
+      setMessages((current) => current.map((message) =>
+        message.id === messageId ? { ...message, failed: true } : message,
+      ))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function startNewResearch() {
+    setMessages([])
+    setActiveSection('research')
+    setError(null)
+    setQuestion('')
+    setCommand('')
+    setSelectedCitation(null)
+    setActiveTab('sources')
+    composerRef.current?.focus()
+  }
+
+  function chooseSuggestedQuestion(suggestion) {
+    setQuestion(suggestion)
+    composerRef.current?.focus()
+  }
+
+  function addFollowedCompany(event) {
+    event.preventDefault()
+    const name = companyName.trim()
+    const ticker = companyTicker.trim().toUpperCase()
+    if (!name || !ticker) return
+    if (followedCompanies.some((company) => company.ticker.toUpperCase() === ticker)) {
+      setSettingsNotice(`${ticker} is already in your followed companies.`)
+      return
     }
 
-    if (page === 'landing') {
-        return (
-            <LandingPage
-                onStart={() => setPage('workspace')}
-            />
-        )
-    }
+    setFollowedCompanies((current) => [...current, { name, ticker }])
+    setSelectedCompanies((current) => [...current, ticker])
+    setCompanyName('')
+    setCompanyTicker('')
+    setCompanyFormOpen(false)
+    setSettingsNotice(`${name} was added to this browser’s followed companies.`)
+  }
 
-    return <ResearchWorkspace />
+  function toggleCompanySelection(ticker) {
+    setSelectedCompanies((current) =>
+      current.includes(ticker)
+        ? current.filter((item) => item !== ticker)
+        : current.length < 3
+          ? [...current, ticker]
+          : current,
+    )
+  }
+
+  function prepareCompanyResearch(company) {
+    setActiveSection('research')
+    setQuestion(`Summarize the latest available public disclosures and management commentary for ${company.name} (${company.ticker}). Include citations and clearly state the source and retrieval time. Do not provide investment advice or price predictions.`)
+    composerRef.current?.focus()
+  }
+
+  function prepareCompanyComparison() {
+    if (selectedCompanies.length < 2) return
+    setActiveSection('research')
+    const companies = followedCompanies.filter((company) => selectedCompanies.includes(company.ticker))
+    const companyNames = companies.map((company) => `${company.name} (${company.ticker})`).join(' and ')
+    setQuestion(`Compare ${companyNames} using only retrieved public filings and management commentary. Cite each source, identify the reporting period, and state when data is unavailable. Do not calculate financial metrics or provide investment advice.`)
+    composerRef.current?.focus()
+  }
+
+  function showAuthenticationNotice(action) {
+    setSettingsNotice(`${action} is unavailable: authentication is not configured for this API.`)
+  }
+
+  function removeFollowedCompany(company) {
+    setFollowedCompanies((current) => current.filter((item) => item.ticker !== company.ticker))
+    setSelectedCompanies((current) => current.filter((ticker) => ticker !== company.ticker))
+  }
+
+  function openResearchFromHistory(messageId) {
+    setActiveSection('research')
+    window.setTimeout(() => document.getElementById(`thread-${messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0)
+  }
+
+  const latestQuestion = messages.at(-1)?.question
+  return (
+    <div className={`workstation theme-${theme} ${sidebarOpen ? '' : 'sidebar-collapsed'}`}>
+      <header className="command-bar">
+        <div className="command-brand">
+          <button
+            className="icon-button sidebar-toggle"
+            type="button"
+            onClick={() => setSidebarOpen((open) => !open)}
+            title="Toggle navigation sidebar (Ctrl+B)"
+            aria-label="Toggle navigation sidebar"
+            aria-expanded={sidebarOpen}
+          >
+            <Icon name="menu">☰</Icon>
+          </button>
+          <a className="brand" href="/" aria-label="ARIA research home">
+            <span className="brand-mark" aria-hidden="true">
+              <BrandSymbol idPrefix="header" />
+            </span>
+            <span className="brand-name">ARIA</span>
+          </a>
+          <span className="brand-tagline">ASK <i>·</i> RETRIEVE <i>·</i> INTERPRET <i>·</i> AUGMENT</span>
+        </div>
+
+        <form className="command-search" onSubmit={ask} role="search">
+          <Icon name="search">⌕</Icon>
+          <input
+            aria-label="Ask a financial research question"
+            value={command}
+            onChange={(event) => setCommand(event.target.value)}
+            placeholder="Ask a question about a filing or company…"
+            disabled={loading}
+          />
+          <kbd>⌘ K</kbd>
+        </form>
+
+        <div className="command-actions">
+          <StatusPill health={health} />
+        </div>
+      </header>
+
+      <div className="workstation-body">
+        {sidebarOpen && (
+          <aside className="workbench-sidebar" aria-label="Research navigation">
+            <div className="new-session-wrap">
+              <button className="new-session-button" type="button" onClick={startNewResearch}>
+                <Icon name="add">＋</Icon>
+                <span>New research session</span>
+              </button>
+            </div>
+            <div className="sidebar-scroll">
+              <div className="sidebar-label">WORKSPACE</div>
+              <nav className="side-navigation" aria-label="Workspace">
+                <button className={`side-nav-item ${activeSection === 'research' ? 'active' : ''}`} type="button" aria-current={activeSection === 'research' ? 'page' : undefined} onClick={() => setActiveSection('research')}>
+                  <Icon name="chat">▤</Icon><span>Research</span>
+                </button>
+                <button className={`side-nav-item ${activeSection === 'history' ? 'active' : ''}`} type="button" aria-current={activeSection === 'history' ? 'page' : undefined} onClick={() => setActiveSection('history')}>
+                  <Icon name="folder">◷</Icon><span>History</span>
+                  <span className="nav-count">{messages.length}</span>
+                </button>
+                <button className={`side-nav-item ${activeSection === 'library' ? 'active' : ''}`} type="button" aria-current={activeSection === 'library' ? 'page' : undefined} onClick={() => setActiveSection('library')}>
+                  <Icon name="folder">▧</Icon><span>Library</span>
+                  <span className="nav-count">{followedCompanies.length}</span>
+                </button>
+                <button className="side-nav-item" type="button" onClick={() => { setSettingsNotice(''); setSettingsOpen(true) }}>
+                  <Icon name="settings">⚙</Icon><span>Settings</span>
+                </button>
+              </nav>
+
+              <div className="sidebar-divider" />
+              <div className="sidebar-section-heading">
+                <span className="sidebar-label">CURRENT THREAD</span>
+                <span className="thread-state"><span />{messages.length ? `${messages.length} ${messages.length === 1 ? 'inquiry' : 'inquiries'}` : 'New'}</span>
+              </div>
+              {latestQuestion ? (
+                <button
+                  className="recent-thread"
+                  type="button"
+                  onClick={() => composerRef.current?.focus()}
+                  title={latestQuestion}
+                >
+                  <span className="recent-thread-title">{latestQuestion}</span>
+                  <span className="recent-thread-subtitle">In this session</span>
+                </button>
+              ) : (
+                <div className="sidebar-empty">Questions and their source trails will appear here in this session.</div>
+              )}
+
+            </div>
+            <div className="sidebar-bottom">
+              <div className="sidebar-preferences">
+                <span>Appearance</span>
+                <button
+                  className="sidebar-theme-toggle"
+                  type="button"
+                  onClick={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
+                  aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+                >
+                  <span aria-hidden="true">{theme === 'dark' ? '☾' : '☼'}</span>
+                  {theme === 'dark' ? 'Dark' : 'Light'}
+                </button>
+              </div>
+              <div className="sidebar-status"><StatusPill health={health} /></div>
+              <p>Source-grounded financial research</p>
+            </div>
+          </aside>
+        )}
+
+        <main className="research-workspace">
+          {activeSection === 'library' ? (
+            <FollowedCompaniesView
+              followedCompanies={followedCompanies}
+              selectedCompanies={selectedCompanies}
+              companyFormOpen={companyFormOpen}
+              setCompanyFormOpen={setCompanyFormOpen}
+              companyName={companyName}
+              setCompanyName={setCompanyName}
+              companyTicker={companyTicker}
+              setCompanyTicker={setCompanyTicker}
+              onAddCompany={addFollowedCompany}
+              onCompare={prepareCompanyComparison}
+              onToggleCompany={toggleCompanySelection}
+              onResearchCompany={prepareCompanyResearch}
+              onRemoveCompany={removeFollowedCompany}
+            />
+          ) : activeSection === 'history' ? (
+            <ResearchHistoryView
+              messages={messages}
+              onNewResearch={startNewResearch}
+              onOpenResearch={openResearchFromHistory}
+            />
+          ) : (
+            <ResearchWorkspace
+              messages={messages}
+              loading={loading}
+              error={error}
+              question={question}
+              setQuestion={setQuestion}
+              command={command}
+              ask={ask}
+              chooseSuggestedQuestion={chooseSuggestedQuestion}
+              composerRef={composerRef}
+              threadEndRef={threadEndRef}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              selectedCitation={selectedCitation}
+              setSelectedCitation={setSelectedCitation}
+            />
+          )}
+        </main>
+
+        {settingsOpen && (
+          <SettingsDialog
+            health={health}
+            sessionId={sessionId}
+            mockMode={mockMode}
+            theme={theme}
+            setTheme={setTheme}
+            privacyOpen={privacyOpen}
+            setPrivacyOpen={setPrivacyOpen}
+            settingsNotice={settingsNotice}
+            onClose={() => setSettingsOpen(false)}
+            onShowAuthenticationNotice={showAuthenticationNotice}
+          />
+        )}
+      </div>
+    </div>
+  )
 }
