@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { documentUrl } from './api/client.js'
 import { ApiStatusDot, ThemeToggle } from './shared/ARIAUI.jsx'
+import CompanyComparisonView from './features/companies/CompanyComparisonView.jsx'
 
 const companies = [
     {
@@ -50,6 +51,40 @@ const documentsByTicker = {
     RELIANCE: relianceDocuments,
 }
 
+function CompanyNavigationPanel({ onClose, onNavigate }) {
+    return (
+        <div className="home-navigation-overlay">
+            <button className="home-navigation-backdrop" type="button" onClick={onClose} aria-label="Close navigation" />
+            <aside className="home-navigation-panel" aria-label="Main navigation">
+                <div className="home-navigation-heading">
+                    <strong>ARIA</strong>
+                    <button className="home-navigation-close" type="button" onClick={onClose} aria-label="Close navigation">×</button>
+                </div>
+                <div className="home-navigation-label">WORKSPACE</div>
+                <nav className="home-navigation-links" aria-label="Workspace">
+                    {[
+                        ['home', '⌂', 'Home'],
+                        ['research', '▤', 'Research'],
+                        ['history', '◷', 'History'],
+                        ['library', '▧', 'Library'],
+                        ['settings', '⚙', 'Settings'],
+                    ].map(([destination, icon, label]) => (
+                        <button
+                            className="home-navigation-item"
+                            key={destination}
+                            type="button"
+                            onClick={() => onNavigate(destination)}
+                        >
+                            <span aria-hidden="true">{icon}</span>
+                            {label}
+                        </button>
+                    ))}
+                </nav>
+            </aside>
+        </div>
+    )
+}
+
 function TrendLine({ direction }) {
     return (
         <svg
@@ -68,11 +103,21 @@ function TrendLine({ direction }) {
     )
 }
 
-export default function HomePage({ apiHealth, onCompanySelect, onToggleFollow, followedCompanies, theme, onToggleTheme }) {
+export default function HomePage({ apiHealth, onCompanySelect, onToggleFollow, followedCompanies, savedReports, onToggleSaveReport, onNavigate, theme, onToggleTheme }) {
     const [search, setSearch] = useState('')
     const [selectedCompany, setSelectedCompany] = useState(null)
     const [activeCompanyTab, setActiveCompanyTab] = useState('overview')
     const [reportingPeriod, setReportingPeriod] = useState('')
+    const [navigationOpen, setNavigationOpen] = useState(false)
+
+    useEffect(() => {
+        if (!navigationOpen) return undefined
+        function closeOnEscape(event) {
+            if (event.key === 'Escape') setNavigationOpen(false)
+        }
+        window.addEventListener('keydown', closeOnEscape)
+        return () => window.removeEventListener('keydown', closeOnEscape)
+    }, [navigationOpen])
 
     const filteredCompanies = companies.filter((company) =>
         `${company.name} ${company.ticker}`
@@ -93,6 +138,16 @@ export default function HomePage({ apiHealth, onCompanySelect, onToggleFollow, f
         setActiveCompanyTab('overview')
     }
 
+    function navigate(destination) {
+        setNavigationOpen(false)
+        if (destination === 'home') {
+            setSelectedCompany(null)
+            setActiveCompanyTab('overview')
+            return
+        }
+        onNavigate(destination)
+    }
+
     if (selectedCompany) {
         const companyDocuments = documentsByTicker[selectedCompany.ticker] || []
         const followed = followedCompanies.some((company) => company.ticker === selectedCompany.ticker)
@@ -106,6 +161,9 @@ export default function HomePage({ apiHealth, onCompanySelect, onToggleFollow, f
             <main className={`home-page theme-${theme}`}>
                 <header className="home-nav">
                     <button className="company-back-icon" type="button" onClick={backToSearch} aria-label="Back to company search" title="Back to company search">←</button>
+                    <button className="home-menu-button" type="button" onClick={() => setNavigationOpen(true)} aria-label="Open navigation" aria-expanded={navigationOpen}>
+                        <span></span><span></span><span></span>
+                    </button>
                     <div className="home-nav-title">Company overview</div>
                     <ThemeToggle theme={theme} onToggle={onToggleTheme} />
                     <ApiStatusDot className="home-api-status" health={apiHealth} />
@@ -133,6 +191,7 @@ export default function HomePage({ apiHealth, onCompanySelect, onToggleFollow, f
                             ['overview', 'Overview'],
                             ['annual', 'Annual Reports'],
                             ['earnings', 'Earnings Calls'],
+                            ['compare', 'Compare'],
                         ].map(([tab, label]) => (
                             <button
                                 key={tab}
@@ -146,70 +205,86 @@ export default function HomePage({ apiHealth, onCompanySelect, onToggleFollow, f
                         ))}
                     </nav>
 
-                    <div className="company-period-row">
-                        <label htmlFor="reporting-period">Reporting period</label>
-                        <select
-                            id="reporting-period"
-                            value={reportingPeriod}
-                            onChange={(event) => setReportingPeriod(event.target.value)}
-                            disabled={!companyDocuments.length}
-                        >
-                            {companyDocuments.length ? (
-                                [...new Set(companyDocuments.map((document) => document.period))].map((period, index) => (
-                                    <option key={period} value={period}>{period}{index === 0 ? ' (Latest available)' : ''}</option>
-                                ))
-                            ) : <option value="">Unavailable</option>}
-                        </select>
-                    </div>
+                    {activeCompanyTab === 'compare' ? (
+                        <CompanyComparisonView selectedCompany={selectedCompany} companies={companies} />
+                    ) : (
+                        <>
+                            <div className="company-period-row">
+                                <label htmlFor="reporting-period">Reporting period</label>
+                                <select
+                                    id="reporting-period"
+                                    value={reportingPeriod}
+                                    onChange={(event) => setReportingPeriod(event.target.value)}
+                                    disabled={!companyDocuments.length}
+                                >
+                                    {companyDocuments.length ? (
+                                        [...new Set(companyDocuments.map((document) => document.period))].map((period, index) => (
+                                            <option key={period} value={period}>{period}{index === 0 ? ' (Latest available)' : ''}</option>
+                                        ))
+                                    ) : <option value="">Unavailable</option>}
+                                </select>
+                            </div>
 
-                    <div className="company-metrics" aria-label={`Financial metrics for ${reportingPeriod || 'selected period'}`}>
-                        {['Revenue', 'Net Profit', 'EPS'].map((metric) => (
-                            <article className="company-metric" key={metric}>
-                                <h2>{metric}</h2>
-                                <strong>Unavailable</strong>
-                                <span>No verified metric summary for {reportingPeriod || 'this company'}</span>
-                            </article>
-                        ))}
-                    </div>
-                    <p className="company-metric-note">Use a cited filing or ask ARIA to retrieve the reported value. No unsourced figures are shown here.</p>
-
-                    <section className="company-documents" aria-labelledby="available-documents-heading">
-                        <div className="company-documents-heading">
-                            <h2 id="available-documents-heading">
-                                {activeCompanyTab === 'annual' ? 'Annual Reports' : activeCompanyTab === 'earnings' ? 'Earnings Calls' : 'Available Documents'}
-                            </h2>
-                            <span>{visibleDocuments.length}</span>
-                        </div>
-                        {visibleDocuments.length ? (
-                            <div className="company-document-list">
-                                {visibleDocuments.map((document) => (
-                                    <a
-                                        className="company-document-row"
-                                        href={documentUrl(document.filename)}
-                                        key={document.filename}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                    >
-                                        <span className="company-document-icon" aria-hidden="true">▤</span>
-                                        <span className="company-document-copy">
-                                            <strong>{document.title}</strong>
-                                            <span>{document.type} · {document.pages} pages · Filed {new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium' }).format(new Date(document.timestamp))}</span>
-                                        </span>
-                                        <span className="company-document-arrow" aria-hidden="true">›</span>
-                                    </a>
+                            <div className="company-metrics" aria-label={`Financial metrics for ${reportingPeriod || 'selected period'}`}>
+                                {['Revenue', 'Net Profit', 'EPS'].map((metric) => (
+                                    <article className="company-metric" key={metric}>
+                                        <h2>{metric}</h2>
+                                        <strong>Unavailable</strong>
+                                        <span>No verified metric summary for {reportingPeriod || 'this company'}</span>
+                                    </article>
                                 ))}
                             </div>
-                        ) : (
-                            <div className="company-documents-empty">
-                                No indexed {activeCompanyTab === 'annual' ? 'annual reports' : activeCompanyTab === 'earnings' ? 'earnings calls' : 'documents'} are available for this company yet.
-                            </div>
-                        )}
-                    </section>
+                            <p className="company-metric-note">Use a cited filing or ask ARIA to retrieve the reported value. No unsourced figures are shown here.</p>
 
-                    <button className="company-ask-button" type="button" onClick={() => onCompanySelect(selectedCompany)}>
-                        Ask AI about this company <span aria-hidden="true">→</span>
-                    </button>
+                            <section className="company-documents" aria-labelledby="available-documents-heading">
+                                <div className="company-documents-heading">
+                                    <h2 id="available-documents-heading">
+                                        {activeCompanyTab === 'annual' ? 'Annual Reports' : activeCompanyTab === 'earnings' ? 'Earnings Calls' : 'Available Documents'}
+                                    </h2>
+                                    <span>{visibleDocuments.length}</span>
+                                </div>
+                                {visibleDocuments.length ? (
+                                    <div className="company-document-list">
+                                        {visibleDocuments.map((document) => (
+                                            <article className="company-document-row" key={document.filename}>
+                                                <a
+                                                    className="company-document-link"
+                                                    href={documentUrl(document.filename)}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                >
+                                                    <span className="company-document-icon" aria-hidden="true">▤</span>
+                                                    <span className="company-document-copy">
+                                                        <strong>{document.title}</strong>
+                                                        <span>{document.type} · {document.pages} pages · Filed {new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium' }).format(new Date(document.timestamp))}</span>
+                                                    </span>
+                                                    <span className="company-document-arrow" aria-hidden="true">›</span>
+                                                </a>
+                                                <button
+                                                    className="company-document-save"
+                                                    type="button"
+                                                    aria-pressed={savedReports.some((report) => report.filename === document.filename)}
+                                                    onClick={() => onToggleSaveReport(selectedCompany, document)}
+                                                >
+                                                    {savedReports.some((report) => report.filename === document.filename) ? 'Saved' : 'Save'}
+                                                </button>
+                                            </article>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="company-documents-empty">
+                                        No indexed {activeCompanyTab === 'annual' ? 'annual reports' : activeCompanyTab === 'earnings' ? 'earnings calls' : 'documents'} are available for this company yet.
+                                    </div>
+                                )}
+                            </section>
+
+                            <button className="company-ask-button" type="button" onClick={() => onCompanySelect(selectedCompany)}>
+                                Ask AI about this company <span aria-hidden="true">→</span>
+                            </button>
+                        </>
+                    )}
                 </section>
+                {navigationOpen && <CompanyNavigationPanel onClose={() => setNavigationOpen(false)} onNavigate={navigate} />}
             </main>
         )
     }
@@ -218,7 +293,7 @@ export default function HomePage({ apiHealth, onCompanySelect, onToggleFollow, f
         <main className={`home-page theme-${theme}`}>
 
             <header className="home-nav">
-                <button className="home-menu-button" type="button">
+                <button className="home-menu-button" type="button" onClick={() => setNavigationOpen(true)} aria-label="Open navigation" aria-expanded={navigationOpen}>
                     <span></span>
                     <span></span>
                     <span></span>
@@ -306,6 +381,7 @@ export default function HomePage({ apiHealth, onCompanySelect, onToggleFollow, f
                 </div>
 
             </section>
+            {navigationOpen && <CompanyNavigationPanel onClose={() => setNavigationOpen(false)} onNavigate={navigate} />}
         </main>
     )
 }

@@ -1,6 +1,5 @@
 export default function FollowedCompaniesView({
   followedCompanies,
-  selectedCompanies,
   companyFormOpen,
   setCompanyFormOpen,
   companyName,
@@ -8,8 +7,6 @@ export default function FollowedCompaniesView({
   companyTicker,
   setCompanyTicker,
   onAddCompany,
-  onCompare,
-  onToggleCompany,
   onResearchCompany,
   onRemoveCompany,
 }) {
@@ -21,15 +18,6 @@ export default function FollowedCompaniesView({
           <p>Saved in this browser · fundamentals provider not configured</p>
         </div>
         <div className="company-strip-actions">
-          <button
-            className="compare-button"
-            type="button"
-            onClick={onCompare}
-            disabled={selectedCompanies.length < 2}
-            title={selectedCompanies.length < 2 ? 'Select at least two companies to compare' : 'Prepare a sourced comparison question'}
-          >
-            Compare selected{selectedCompanies.length ? ` (${selectedCompanies.length})` : ''}
-          </button>
           <button className="add-company-button" type="button" onClick={() => setCompanyFormOpen((open) => !open)}>
             <span aria-hidden="true">＋</span> Follow company
           </button>
@@ -55,17 +43,10 @@ export default function FollowedCompaniesView({
           <div className="followed-company-list">
             {followedCompanies.map((company) => (
               <article className="followed-company-card" key={company.ticker}>
-                <label className="company-select">
-                  <input
-                    type="checkbox"
-                    checked={selectedCompanies.includes(company.ticker)}
-                    disabled={!selectedCompanies.includes(company.ticker) && selectedCompanies.length >= 3}
-                    onChange={() => onToggleCompany(company.ticker)}
-                    aria-label={`Select ${company.name} for comparison`}
-                  />
+                <div className="company-select">
                   <span className="company-ticker">{company.ticker}</span>
                   <span className="company-name">{company.name}</span>
-                </label>
+                </div>
                 <span className="company-data-status"><span />Data source not configured</span>
                 <button className="company-research-button" type="button" onClick={() => onResearchCompany(company)}>
                   Research
@@ -81,7 +62,7 @@ export default function FollowedCompaniesView({
               </article>
             ))}
           </div>
-          <p className="company-strip-note">Company statistics are unavailable until a permitted fundamentals source is configured. Compare prepares a cited research question; it does not calculate metrics.</p>
+          <p className="company-strip-note">Company statistics are unavailable until a permitted fundamentals source is configured.</p>
         </>
       ) : (
         <div className="company-empty-state">
