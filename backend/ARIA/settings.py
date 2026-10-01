@@ -11,8 +11,8 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# .env is optional (compose injects env vars directly); load it for local runs.
 load_dotenv(BASE_DIR / '.env')
+load_dotenv(BASE_DIR.parent / '.env')
 
 
 def env(key, default=None):
@@ -124,7 +124,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # --- CORS: frontends (if any) configured via env, comma-separated origins ---
 CORS_ALLOWED_ORIGINS = [
-    o.strip() for o in env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',') if o.strip()
+    o.strip() for o in env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001').split(',') if o.strip()
 ]
 
 REST_FRAMEWORK = {

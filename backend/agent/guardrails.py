@@ -162,3 +162,35 @@ def check_preflight_guardrail(question: str) -> GuardrailResult:
             )
 
     return GuardrailResult(is_blocked=False)
+
+
+_POSTFLIGHT_ADVICE_PATTERNS = [
+    (
+        re.compile(
+            r"\b(?:i\s+(?:recommend|advise|suggest)\s+(?:you\s+to\s+)?(?:buy|sell|hold|invest|accumulate))\b",
+            re.IGNORECASE,
+        ),
+        "postflight_advice_detected",
+    ),
+    (
+        re.compile(
+            r"\b(?:strong\s+buy|strong\s+sell|target\s+price\s+is\s+₹?\d+|price\s+will\s+reach)\b",
+            re.IGNORECASE,
+        ),
+        "postflight_prediction_detected",
+    ),
+]
+
+
+def check_postflight_guardrail(answer: str) -> GuardrailResult:
+    """Audit the generated response to guarantee no advice or prediction slipped past the LLM."""
+    cleaned = answer.strip()
+    for pattern, reason in _POSTFLIGHT_ADVICE_PATTERNS:
+        if pattern.search(cleaned):
+            return GuardrailResult(
+                is_blocked=True,
+                reason=reason,
+                refusal_message=STANDARD_REFUSAL_MESSAGE,
+            )
+    return GuardrailResult(is_blocked=False)
+

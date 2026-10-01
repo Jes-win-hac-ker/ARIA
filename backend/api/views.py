@@ -16,7 +16,12 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
-from agent.guardrails import STANDARD_REFUSAL_MESSAGE, check_preflight_guardrail
+from agent.guardrails import (
+    STANDARD_REFUSAL_MESSAGE,
+    check_postflight_guardrail,
+    check_preflight_guardrail,
+)
+from agent.llm import synthesize_research_answer
 from agent.router import route_and_execute
 from agent.tools import financial_calculator, fundamentals_lookup, search_filings
 from .memory import (
@@ -144,11 +149,39 @@ def ask(request):
             latency_ms=10,
         )
 
-    token_usage = 45 if tool_outputs else 0
+    # 5. Hybrid LLM Synthesis (AGENTS.md sections 1, 2, 6)
+    synthesized_answer, llm_tokens, _, llm_warnings = synthesize_research_answer(
+        question=question,
+        tool_outputs=tool_outputs,
+        citations=citations,
+        default_answer=answer,
+    )
+    if llm_warnings:
+        warnings.extend(llm_warnings)
+
+    # 6. Post-flight Guardrail Check (guarantees zero advice/predictions in output)
+    post_check = check_postflight_guardrail(synthesized_answer)
+    if post_check.is_blocked:
+        refusal_payload = {
+            'answer': post_check.refusal_message or STANDARD_REFUSAL_MESSAGE,
+            'refused': True,
+            'refusal_reason': post_check.reason or 'postflight_guardrail_refusal',
+            'citations': [],
+            'tool_outputs': [],
+            'warnings': ['postflight_guardrail_refusal'],
+            'token_usage': 0,
+            'correlation_id': correlation_id,
+            'latency_ms': int((time.monotonic() - start_time) * 1000),
+        }
+        validated = AgentResponse.model_validate(refusal_payload)
+        record_assistant_message(session=session, content=refusal_payload['answer'])
+        return Response(validated.model_dump())
+
+    token_usage = llm_tokens if llm_tokens > 0 else (45 if tool_outputs else 0)
     latency_ms = int((time.monotonic() - start_time) * 1000)
 
     payload = {
-        'answer': answer,
+        'answer': synthesized_answer,
         'refused': False,
         'refusal_reason': None,
         'citations': citations,
@@ -165,7 +198,7 @@ def ask(request):
         return Response(_safe_fallback(correlation_id, str(exc)))
 
     # Persist assistant message and token usage in MySQL
-    record_assistant_message(session=session, content=answer)
+    record_assistant_message(session=session, content=synthesized_answer)
     add_session_token_usage(session=session, tokens=token_usage)
 
     return Response(validated.model_dump())

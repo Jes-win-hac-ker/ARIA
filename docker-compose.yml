@@ -13,15 +13,13 @@ services:
       - mysql-data:/var/lib/mysql
       - ./docker/mysql-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      # mysqladmin ping returns 0 once the server accepts connections;
-      # compose gates `web` on this status.
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
       interval: 5s
       timeout: 5s
       retries: 20
       start_period: 30s
     ports:
-      - "${MYSQL_PORT:-3306}:3306"  # host access for dev tooling; remove in prod
+      - "${MYSQL_PORT:-3306}:3306"
     security_opt:
       - no-new-privileges:true
 
@@ -49,6 +47,10 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-stockpass}
       TZ: ${TZ:-Asia/Kolkata}
       ARIA_DATA_DIR: /app/data
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      LLM_MODEL_NAME: ${LLM_MODEL_NAME:-gemini-2.5-flash}
+      LLM_TOKEN_CAP_PER_QUERY: ${LLM_TOKEN_CAP_PER_QUERY:-4000}
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
     volumes:
       - ./data:/app/data:ro
     ports:
@@ -79,8 +81,6 @@ services:
       web:
         condition: service_healthy
     healthcheck:
-      # 127.0.0.1 explicitly: busybox wget resolves "localhost" to ::1, but
-      # Vite binds IPv4 only, so a literal localhost URL would false-fail.
       test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:3000/"]
       interval: 15s
       timeout: 5s
