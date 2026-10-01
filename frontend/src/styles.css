@@ -3166,6 +3166,7 @@ button:disabled {
   background: var(--surface-subtle);
   color: var(--text-primary);
 }
+
 .landing-hero {
   width: min(1180px, 90%);
   min-height: 570px;
@@ -3262,7 +3263,7 @@ button:disabled {
   border-bottom: 0;
 }
 
-.preview-row > span {
+.preview-row>span {
   color: #66856a;
   font-family: var(--mono);
   font-size: 10px;
