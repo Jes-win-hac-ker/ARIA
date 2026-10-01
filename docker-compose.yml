@@ -4,10 +4,10 @@ services:
     container_name: aria-db
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set in .env}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-aria}
-      MYSQL_USER: ${MYSQL_USER:-aria}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-stock}
+      MYSQL_USER: ${MYSQL_USER:-stock_analyst}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-stockpass}
       TZ: ${TZ:-Asia/Kolkata}
     volumes:
       - mysql-data:/var/lib/mysql
@@ -32,6 +32,8 @@ services:
     restart: unless-stopped
     command: >
       sh -c "python manage.py migrate --noinput &&
+             python manage.py load_market_data &&
+             python manage.py build_rag_index &&
              python manage.py collectstatic --noinput --clear &&
              gunicorn ARIA.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 60"
     environment: &web-env
@@ -41,10 +43,13 @@ services:
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
       MYSQL_HOST: db
       MYSQL_PORT: "3306"
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-aria}
-      MYSQL_USER: ${MYSQL_USER:-aria}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set in .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-stock}
+      MYSQL_USER: ${MYSQL_USER:-stock_analyst}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-stockpass}
       TZ: ${TZ:-Asia/Kolkata}
+      ARIA_DATA_DIR: /app/data
+    volumes:
+      - ./data:/app/data:ro
     ports:
       - "${WEB_PORT:-8000}:8000"
     depends_on:

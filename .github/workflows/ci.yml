@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  backend-gaurdrails-and-contract:
+    name: Backend Guardrails & Contract
+    runs-on: ubuntu-latest
+
+    env:
+      DJANGO_SECRET_KEY: ci-dummy-secret-key-32-chars-long
+      GEMINI_API_KEY: dummy
+      DJANGO_DB_ENGINE: sqlite
+      DJANGO_DEBUG: "0"
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,testserver
+      PYTHONPATH: backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install Django django-cors-headers djangorestframework pydantic python-dotenv whitenoise pytest pytest-django faiss-cpu pypdf scikit-learn
+
+      - name: Run Guardrail Tests
+        run: |
+          pytest backend/api/test_guardrails.py -v
+
+      - name: Run API Contract Tests
+        run: |
+          pytest backend/api/test_contract.py -v

@@ -22,7 +22,9 @@ def env(key, default=None):
 SECRET_KEY = env('DJANGO_SECRET_KEY', 'dev-only-insecure-key-change-me')
 DEBUG = env('DJANGO_DEBUG', '0') == '1'
 
-ALLOWED_HOSTS = [h.strip() for h in env('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()]
+ALLOWED_HOSTS = [h.strip() for h in env('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver').split(',') if h.strip()]
+if 'testserver' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('testserver')
 
 INSTALLED_APPS = [
     'django.contrib.contenttypes',
@@ -30,6 +32,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'api',
+    'evals',
 ]
 
 MIDDLEWARE = [
@@ -57,7 +60,11 @@ TEMPLATES = [
 WSGI_APPLICATION = 'ARIA.wsgi.application'
 
 # --- Database: MySQL 8 driven entirely by env vars (AGENTS.md section 6/12) ---
-DB_ENGINE = env('DJANGO_DB_ENGINE', 'mysql')
+# In Docker, MYSQL_HOST="db" is injected so it connects to MySQL container.
+# In local host development without MySQL env vars, fallback cleanly to sqlite.
+_default_engine = 'mysql' if (env('MYSQL_HOST') or env('DB_HOST')) else 'sqlite'
+DB_ENGINE = env('DJANGO_DB_ENGINE', _default_engine)
+
 if DB_ENGINE == 'sqlite':
     DATABASES = {
         'default': {
@@ -66,14 +73,29 @@ if DB_ENGINE == 'sqlite':
         }
     }
 else:
+    try:
+        import MySQLdb  # noqa
+    except ImportError:
+        try:
+            import pymysql
+            pymysql.install_as_MySQLdb()
+        except ImportError:
+            pass
+
+    db_name = env('MYSQL_DATABASE') or env('DB_NAME') or 'stock'
+    db_user = env('MYSQL_USER') or env('DB_USER') or 'stock_analyst'
+    db_password = env('MYSQL_PASSWORD') or env('DB_PASSWORD') or 'stockpass'
+    db_host = env('MYSQL_HOST') or env('DB_HOST') or 'db'
+    db_port = env('MYSQL_PORT') or env('DB_PORT') or '3306'
+
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
-            'NAME': env('MYSQL_DATABASE', 'aria'),
-            'USER': env('MYSQL_USER', 'aria'),
-            'PASSWORD': env('MYSQL_PASSWORD', ''),
-            'HOST': env('MYSQL_HOST', 'db'),
-            'PORT': env('MYSQL_PORT', '3306'),
+            'NAME': db_name,
+            'USER': db_user,
+            'PASSWORD': db_password,
+            'HOST': db_host,
+            'PORT': db_port,
             'CONN_MAX_AGE': 60,
             'OPTIONS': {
                 'charset': 'utf8mb4',
@@ -81,7 +103,7 @@ else:
             'TEST': {
                 # Docker MySQL init script creates this user with full rights
                 # on test_% databases, so manage.py test needs no extra grants.
-                'NAME': 'test_' + env('MYSQL_DATABASE', 'aria'),
+                'NAME': 'test_' + db_name,
             },
         }
     }
