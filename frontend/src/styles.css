@@ -2792,12 +2792,14 @@ button:disabled {
    ========================================================= */
 
 .auth-page {
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
   background: #f8f7f2;
   display: flex;
-  align-items: center;
+  align-items: safe center;
   justify-content: center;
   position: relative;
+  overflow-y: auto;
   padding: 40px;
   box-sizing: border-box;
 }
@@ -2816,6 +2818,8 @@ button:disabled {
   align-items: center;
   gap: 12px;
   margin-bottom: 48px;
+  color: inherit;
+  text-decoration: none;
 }
 
 .auth-brand-mark {
@@ -2834,6 +2838,7 @@ button:disabled {
 }
 
 .auth-logo {
+  display: block;
   font-size: 21px;
   font-weight: 700;
   letter-spacing: -0.03em;
@@ -2841,6 +2846,7 @@ button:disabled {
 }
 
 .auth-tagline {
+  display: block;
   margin-top: 3px;
   font-size: 8px;
   letter-spacing: 0.08em;
@@ -2909,6 +2915,39 @@ button:disabled {
 .auth-form input[type="password"]:focus {
   border-color: #718b9a;
   box-shadow: 0 0 0 3px rgba(113, 139, 154, 0.12);
+}
+
+.auth-password-field {
+  position: relative;
+  display: block;
+}
+
+.auth-password-field input {
+  padding-right: 58px !important;
+}
+
+.auth-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  border: 0;
+  padding: 4px;
+  background: transparent;
+  color: #456578;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auth-notice {
+  margin: -4px 0 0;
+  border-left: 3px solid #986b27;
+  padding: 9px 11px;
+  background: #faf2dc;
+  color: #684c1d;
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 .auth-options {
@@ -3168,6 +3207,34 @@ button:disabled {
   overflow: hidden;
 }
 
+.preview-content {
+  padding: 8px 20px;
+}
+
+.preview-row {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  gap: 15px;
+  border-bottom: 1px solid #e8e7e1;
+  color: #26323b;
+  font-size: 12px;
+}
+
+.preview-row:last-child {
+  border-bottom: 0;
+}
+
+.preview-row > span {
+  color: #66856a;
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.preview-row strong {
+  font-weight: 600;
+}
+
 .preview-header {
   padding: 16px 20px;
   border-bottom: 1px solid #e1e1db;
@@ -3357,6 +3424,20 @@ button:disabled {
   .landing-features article {
     border-left: 1px solid #dcdcd6;
     border-top: 1px solid #dcdcd6;
+  }
+}
+
+@media (max-height: 700px) {
+  .auth-page {
+    align-items: flex-start;
+  }
+
+  .auth-card {
+    margin: auto;
+  }
+
+  .auth-side-note {
+    display: none;
   }
 }
 
