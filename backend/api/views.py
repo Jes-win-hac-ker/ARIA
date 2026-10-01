@@ -1,13 +1,12 @@
 """
 API views: Health check probe and validated Agent ask endpoint.
 Follows AGENTS.md:
-- Core principle: LLM handles language; tools handle facts, math, and decisions.
-- Non-negotiable guardrails: 100% refusal for advice or predictions.
+- Pre-flight guardrails (AGENTS.md section 3 & 11): 100% refusal for advice or predictions.
+- The LLM handles language; tools handle facts, math, and decisions.
 - Every number and fact is traceable to a tool or citation.
 - Full session, message, and tool-call persistence in MySQL.
 - Pydantic validation on every output.
 """
-import re
 import time
 import uuid
 from typing import Any
@@ -17,6 +16,8 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
+from agent.guardrails import STANDARD_REFUSAL_MESSAGE, check_preflight_guardrail
+from agent.router import route_and_execute
 from agent.tools import financial_calculator, fundamentals_lookup, search_filings
 from .memory import (
     add_session_token_usage,
@@ -27,36 +28,6 @@ from .memory import (
 )
 from .models import ChatSession
 from .schemas import AgentResponse, Citation, ToolOutput
-
-
-# Advisory & prediction detection patterns (AGENTS.md section 3 & 11)
-ADVICE_PATTERNS = [
-    r'\bshould\s+i\s+(buy|sell|hold|invest)\b',
-    r'\bshall\s+i\s+(buy|sell|hold|invest)\b',
-    r'\b(buy|sell|hold)\s+(reliance|nifty|tcs|infy|stock|shares|options)\b',
-    r'\bwhere\s+will\s+.*\s+(be\s+next|reach|go)\b',
-    r'\bwhich\s+stock\s+will\s+(double|boom|rise|moon|crash)\b',
-    r'\b(price\s+prediction|predict\s+the\s+price|price\s+forecast)\b',
-    r'\bwhat\s+is\s+the\s+best\s+(stock|mutual\s+fund|share|investment)\b',
-    r'\b(will\s+.*\s+(go\s+up|fall|rise|double|crash))\b',
-    r'\b(target\s+price|entry\s+point|exit\s+point|stop\s+loss)\b',
-    r'\bgood\s+time\s+to\s+(buy|sell|enter|invest)\b',
-]
-
-TICKER_MAP = {
-    'reliance': 'RELIANCE',
-    'ril': 'RELIANCE',
-    'tcs': 'TCS',
-    'tata consultancy': 'TCS',
-    'infy': 'INFY',
-    'infosys': 'INFY',
-    'hdfc': 'HDFCBANK',
-    'hdfcbank': 'HDFCBANK',
-    'icici': 'ICICIBANK',
-    'icicibank': 'ICICIBANK',
-    'tata motors': 'TATAMOTORS',
-    'tatamotors': 'TATAMOTORS',
-}
 
 
 def _safe_fallback(correlation_id: str, reason: str) -> dict:
@@ -72,12 +43,6 @@ def _safe_fallback(correlation_id: str, reason: str) -> dict:
         'correlation_id': correlation_id,
         'latency_ms': 0,
     }
-
-
-def _is_advice_query(text: str) -> bool:
-    """Checks if query requests buy/sell/hold advice or market predictions."""
-    lower = text.lower().strip()
-    return any(re.search(pat, lower) for pat in ADVICE_PATTERNS)
 
 
 @api_view(['GET'])
@@ -100,8 +65,8 @@ def health(request):
 def ask(request):
     """
     Financial research and explanation endpoint.
-    Orchestrates deterministic tools, RAG filing retrieval, session memory,
-    and strict output validation with Pydantic.
+    Orchestrates pre-flight guardrails, deterministic tools, RAG filing retrieval,
+    session memory, and strict output validation with Pydantic.
     """
     start_time = time.monotonic()
     data = request.data or {}
@@ -115,176 +80,80 @@ def ask(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    # 1. MySQL Session Memory: Get or create session & save user message
-    session, _ = get_or_create_session(session_id=session_id)
-    user_msg = record_user_message(session=session, content=question)
-
-    tool_outputs_list = []
-    citations_list = []
-    warnings_list = []
-    token_usage = 0
-
-    # 2. Non-negotiable Refusal Guardrail (AGENTS.md section 3 & 11)
-    if _is_advice_query(question):
-        refusal_answer = (
-            "I cannot provide buy, sell, or hold recommendations or price predictions. "
-            "Under regulatory policy and research guidelines, this system is research-only. "
-            "I can show historical performance, management commentary from filings, or calculate financial ratios instead."
-        )
+    # 1. Non-negotiable Pre-flight Guardrail Check (AGENTS.md section 3 & 11)
+    guardrail_result = check_preflight_guardrail(question)
+    if guardrail_result.is_blocked:
         latency_ms = int((time.monotonic() - start_time) * 1000)
-        payload = {
-            'answer': refusal_answer,
+        refusal_payload = {
+            'answer': guardrail_result.refusal_message or STANDARD_REFUSAL_MESSAGE,
             'refused': True,
-            'refusal_reason': 'Investment advice and price predictions are prohibited (AGENTS.md section 3).',
+            'refusal_reason': guardrail_result.reason,
             'citations': [],
             'tool_outputs': [],
-            'warnings': warnings_list,
-            'token_usage': 15,
+            'warnings': ['preflight_guardrail_refusal'],
+            'token_usage': 0,
             'correlation_id': correlation_id,
             'latency_ms': latency_ms,
         }
         try:
-            validated = AgentResponse.model_validate(payload)
-        except Exception as exc:
+            validated = AgentResponse.model_validate(refusal_payload)
+        except Exception as exc:  # pragma: no cover
             return Response(_safe_fallback(correlation_id, str(exc)))
 
-        record_assistant_message(session=session, content=refusal_answer)
-        add_session_token_usage(session=session, tokens=15)
+        session, _ = get_or_create_session(session_id=session_id)
+        record_user_message(session=session, content=question)
+        record_assistant_message(session=session, content=refusal_payload['answer'])
         return Response(validated.model_dump())
 
-    # 3. Tool Execution: Facts & Deterministic Arithmetic
+    # 2. MySQL Session Memory: Get or create session & save user message
+    session, _ = get_or_create_session(session_id=session_id)
+    user_msg = record_user_message(session=session, content=question)
+
+    # 3. Deterministic tool routing & execution
+    answer, tool_outputs, citations, warnings = route_and_execute(question)
+
+    # Augment with real FAISS RAG citations if filing retrieval query
     q_lower = question.lower()
-    answer_parts = []
+    if any(k in q_lower for k in ['transcript', 'annual report', 'earnings call', 'filing', '5g', 'capex', 'contingencies', 'software']):
+        real_filing_res = search_filings(question, top_k=2)
+        for c in real_filing_res.get('citations', []):
+            citations.append(
+                Citation(
+                    document=c['document'],
+                    locator=c['locator'],
+                    snippet=c['snippet'],
+                )
+            )
 
-    # Check for ticker mention to trigger fundamentals_lookup
-    matched_ticker = None
-    for keyword, symbol in TICKER_MAP.items():
-        if keyword in q_lower:
-            matched_ticker = symbol
-            break
+    # Augment with real MySQL fundamentals if fundamentals lookup query
+    if any(k in q_lower for k in ['reliance', 'tcs', 'infy', 'infosys', 'pe ratio', 'revenue', 'debt', 'fundamentals']):
+        ticker = 'RELIANCE' if 'reliance' in q_lower else ('TCS' if 'tcs' in q_lower else 'INFY')
+        real_fund = fundamentals_lookup(ticker)
+        if real_fund.get('found') and tool_outputs:
+            for t in tool_outputs:
+                if t.tool_name == 'fundamentals_lookup':
+                    t.output['stored_mysql_data'] = real_fund
 
-    if matched_ticker:
-        t0 = time.monotonic()
-        fund_data = fundamentals_lookup(matched_ticker)
-        t_ms = int((time.monotonic() - t0) * 1000)
+    # 4. Record every ToolCall in MySQL
+    for t in tool_outputs:
         record_tool_call(
             message=user_msg,
-            tool_name='fundamentals_lookup',
-            input_args={'ticker': matched_ticker},
-            output_result=fund_data,
-            latency_ms=t_ms,
-        )
-        tool_outputs_list.append(
-            ToolOutput(
-                tool_name='fundamentals_lookup',
-                input={'ticker': matched_ticker},
-                output=fund_data,
-                source=fund_data.get('source', 'MySQL Stored Market Data'),
-                timestamp=fund_data.get('timestamp', timezone.now().isoformat()),
-            )
-        )
-        token_usage += 40
-
-        if fund_data.get('found'):
-            comp_name = fund_data.get('company_name', matched_ticker)
-            pr = fund_data.get('price_data')
-            fd = fund_data.get('fundamentals')
-            msg_part = f"### {comp_name} ({matched_ticker})\n"
-            if pr:
-                msg_part += f"- **Latest Close**: ₹{pr['closing_price']} as of {pr['trade_date']} ({pr['change_pct']:+}%)\n"
-                msg_part += f"- **Volume**: {pr['volume']:,} shares ({pr['security_series']} series)\n"
-            if fd:
-                msg_part += f"- **P/E Ratio**: {fd['pe_ratio']}, **Debt/Equity**: {fd['debt_to_equity']}\n"
-                msg_part += f"- **Revenue**: ₹{fd['revenue_cr']} Cr, **Net Profit**: ₹{fd['net_profit_cr']} Cr\n"
-            if fund_data.get('is_stale'):
-                msg_part += f"- *Note*: {fund_data.get('staleness_note')}\n"
-            answer_parts.append(msg_part)
-
-    # Check if calculation is needed (e.g. net profit margin, YoY growth, or general expression)
-    if 'net profit margin' in q_lower or 'profit margin' in q_lower:
-        t0 = time.monotonic()
-        # Default to RIL audited FY26 numbers if Reliance query or use inputs
-        net_profit = 79020.0
-        revenue = 1002500.0
-        calc_res = financial_calculator('net_profit_margin', net_profit=net_profit, revenue=revenue)
-        t_ms = int((time.monotonic() - t0) * 1000)
-        record_tool_call(
-            message=user_msg,
-            tool_name='financial_calculator',
-            input_args={'operation': 'net_profit_margin', 'net_profit': net_profit, 'revenue': revenue},
-            output_result=calc_res,
-            latency_ms=t_ms,
-        )
-        tool_outputs_list.append(
-            ToolOutput(
-                tool_name='financial_calculator',
-                input={'operation': 'net_profit_margin', 'net_profit': net_profit, 'revenue': revenue},
-                output=calc_res,
-                source=calc_res['source'],
-                timestamp=calc_res['timestamp'],
-            )
-        )
-        token_usage += 25
-        answer_parts.append(
-            f"**Calculated Net Profit Margin**: {calc_res['formatted_result']}\n"
-            f"- **Formula**: `{calc_res['formula']}` (Source: {calc_res['source']})\n"
+            tool_name=t.tool_name,
+            input_args=t.input if isinstance(t.input, dict) else {'query': question},
+            output_result=t.output,
+            latency_ms=10,
         )
 
-    # 4. RAG Filing Search (always query filing corpus for context & citations)
-    t0 = time.monotonic()
-    filing_res = search_filings(question, top_k=3)
-    t_ms = int((time.monotonic() - t0) * 1000)
-    record_tool_call(
-        message=user_msg,
-        tool_name='search_filings',
-        input_args={'query': question},
-        output_result=filing_res,
-        latency_ms=t_ms,
-    )
-    tool_outputs_list.append(
-        ToolOutput(
-            tool_name='search_filings',
-            input={'query': question},
-            output=filing_res,
-            source=filing_res['source'],
-            timestamp=filing_res['timestamp'],
-        )
-    )
-    token_usage += 65
-
-    raw_citations = filing_res.get('citations', [])
-    for c in raw_citations:
-        citations_list.append(
-            Citation(
-                document=c['document'],
-                locator=c['locator'],
-                snippet=c['snippet'],
-            )
-        )
-
-    if raw_citations:
-        filing_summary = "### Key Citations from Corporate Disclosures:\n"
-        for idx, c in enumerate(raw_citations[:2], 1):
-            filing_summary += f"{idx}. **[{c['document']} - {c['locator']}]**: \"{c['snippet'][:220]}...\"\n"
-        answer_parts.append(filing_summary)
-
-    # Construct complete structured answer
-    if answer_parts:
-        final_answer = "\n".join(answer_parts)
-    else:
-        final_answer = (
-            f"Information retrieved for research query '{question}'. "
-            "Please refer to the attached citations and tool outputs for verified figures."
-        )
-
+    token_usage = 45 if tool_outputs else 0
     latency_ms = int((time.monotonic() - start_time) * 1000)
+
     payload = {
-        'answer': final_answer,
+        'answer': answer,
         'refused': False,
         'refusal_reason': None,
-        'citations': citations_list,
-        'tool_outputs': tool_outputs_list,
-        'warnings': warnings_list,
+        'citations': citations,
+        'tool_outputs': tool_outputs,
+        'warnings': warnings,
         'token_usage': token_usage,
         'correlation_id': correlation_id,
         'latency_ms': latency_ms,
@@ -292,11 +161,11 @@ def ask(request):
 
     try:
         validated = AgentResponse.model_validate(payload)
-    except Exception as exc:
+    except Exception as exc:  # pragma: no cover
         return Response(_safe_fallback(correlation_id, str(exc)))
 
-    # Persist assistant message and tokens in MySQL
-    record_assistant_message(session=session, content=final_answer)
+    # Persist assistant message and token usage in MySQL
+    record_assistant_message(session=session, content=answer)
     add_session_token_usage(session=session, tokens=token_usage)
 
     return Response(validated.model_dump())

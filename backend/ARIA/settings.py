@@ -22,7 +22,9 @@ def env(key, default=None):
 SECRET_KEY = env('DJANGO_SECRET_KEY', 'dev-only-insecure-key-change-me')
 DEBUG = env('DJANGO_DEBUG', '0') == '1'
 
-ALLOWED_HOSTS = [h.strip() for h in env('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()]
+ALLOWED_HOSTS = [h.strip() for h in env('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver').split(',') if h.strip()]
+if 'testserver' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('testserver')
 
 INSTALLED_APPS = [
     'django.contrib.contenttypes',
@@ -30,6 +32,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'api',
+    'evals',
 ]
 
 MIDDLEWARE = [

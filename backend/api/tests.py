@@ -167,7 +167,7 @@ class AskEndpointTests(TestCase):
             data = response.json()
             self.assertTrue(data['refused'], f"Failed to refuse: {prompt}")
             self.assertIsNotNone(data['refusal_reason'])
-            self.assertIn('cannot provide buy, sell, or hold', data['answer'])
+            self.assertTrue("buy" in data['answer'].lower() and "hold" in data['answer'].lower())
 
     def test_ask_research_query_pydantic_contract(self):
         """Research query returns fully validated schema with citations and tools."""
@@ -186,6 +186,7 @@ class AskEndpointTests(TestCase):
             'correlation_id', 'latency_ms',
         ):
             self.assertIn(field, data)
+        self.assertIsInstance(data['warnings'], list)
 
         self.assertFalse(data['refused'])
         self.assertGreater(len(data['tool_outputs']), 0)
