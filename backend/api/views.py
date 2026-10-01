@@ -150,12 +150,14 @@ def ask(request):
         )
 
     # 5. Hybrid LLM Synthesis (AGENTS.md sections 1, 2, 6)
-    synthesized_answer, llm_tokens, _ = synthesize_research_answer(
+    synthesized_answer, llm_tokens, _, llm_warnings = synthesize_research_answer(
         question=question,
         tool_outputs=tool_outputs,
         citations=citations,
         default_answer=answer,
     )
+    if llm_warnings:
+        warnings.extend(llm_warnings)
 
     # 6. Post-flight Guardrail Check (guarantees zero advice/predictions in output)
     post_check = check_postflight_guardrail(synthesized_answer)
