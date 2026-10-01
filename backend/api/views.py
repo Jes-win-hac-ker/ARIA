@@ -9,8 +9,11 @@ Follows AGENTS.md:
 """
 import time
 import uuid
+from pathlib import Path
 from typing import Any
+from django.conf import settings
 from django.db import connection
+from django.http import FileResponse, Http404
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -33,6 +36,31 @@ from .memory import (
 )
 from .models import ChatSession
 from .schemas import AgentResponse, Citation, ToolOutput
+
+AVAILABLE_PDF_DOCUMENTS = frozenset({
+    'rag_1.pdf',
+    'RAG_2.pdf',
+    'RAG_3.pdf',
+    'RIL_Annual_Report_FY23.pdf',
+    'RIL_Annual_Report_FY24.pdf',
+    'RIL_Concall_Transcript_Q3_FY24.pdf',
+    'RIL_Concall_Transcript_Q4_FY23.pdf',
+    'RIL_Concall_Transcript_Q4_FY24.pdf',
+})
+
+
+def document(request, filename: str):
+    """Serve only the public PDFs explicitly included in the research corpus."""
+    if filename not in AVAILABLE_PDF_DOCUMENTS:
+        raise Http404('Document not found')
+
+    document_path = Path(settings.BASE_DIR).parent / 'data' / filename
+    if not document_path.is_file():
+        raise Http404('Document not found')
+
+    response = FileResponse(document_path.open('rb'), content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="{filename}"'
+    return response
 
 
 def _safe_fallback(correlation_id: str, reason: str) -> dict:

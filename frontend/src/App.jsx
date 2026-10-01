@@ -196,6 +196,17 @@ export default function App() {
         )
     }
 
+    function toggleCompanyFollow(company) {
+        const isFollowed = followedCompanies.some((item) => item.ticker === company.ticker)
+        if (isFollowed) {
+            setFollowedCompanies((current) => current.filter((item) => item.ticker !== company.ticker))
+            setSelectedCompanies((current) => current.filter((ticker) => ticker !== company.ticker))
+            return
+        }
+
+        setFollowedCompanies((current) => [...current, { name: company.name, ticker: company.ticker }])
+    }
+
     function prepareCompanyResearch(company) {
         setActiveSection('research')
         setQuestion(`Summarize the latest available public disclosures and management commentary for ${company.name} (${company.ticker}). Include citations and clearly state the source and retrieval time. Do not provide investment advice or price predictions.`)
@@ -248,6 +259,8 @@ export default function App() {
             <HomePage
                 apiHealth={health}
                 onCompanySelect={prepareCompanyResearch}
+                onToggleFollow={toggleCompanyFollow}
+                followedCompanies={followedCompanies}
                 theme={theme}
                 onToggleTheme={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
             />

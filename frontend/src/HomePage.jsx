@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { documentUrl } from './api/client.js'
 import { ApiStatusDot, ThemeToggle } from './shared/ARIAUI.jsx'
 
 const companies = [
@@ -34,6 +35,21 @@ const companies = [
     },
 ]
 
+const relianceDocuments = [
+    { title: 'Audited Financial Results FY2025-26', filename: 'rag_1.pdf', kind: 'results', period: 'FY26', type: 'PDF', pages: 37, timestamp: '2026-04-24T18:00:00+05:30' },
+    { title: 'Financial Results Presentation FY2025-26', filename: 'RAG_3.pdf', kind: 'results', period: 'FY26', type: 'PDF', pages: 72, timestamp: '2026-04-24T17:30:00+05:30' },
+    { title: 'Earnings Call Q4 FY2025-26', filename: 'RAG_2.pdf', kind: 'earnings', period: 'FY26', type: 'Transcript', pages: 31, timestamp: '2026-04-24T20:30:00+05:30' },
+    { title: 'Annual Report FY2023-24', filename: 'RIL_Annual_Report_FY24.pdf', kind: 'annual', period: 'FY24', type: 'PDF', pages: 181, timestamp: '2024-08-07T12:00:00+05:30' },
+    { title: 'Earnings Call Q4 FY2023-24', filename: 'RIL_Concall_Transcript_Q4_FY24.pdf', kind: 'earnings', period: 'FY24', type: 'Transcript', pages: 23, timestamp: '2024-04-22T20:30:00+05:30' },
+    { title: 'Earnings Call Q3 FY2023-24', filename: 'RIL_Concall_Transcript_Q3_FY24.pdf', kind: 'earnings', period: 'FY24', type: 'Transcript', pages: 23, timestamp: '2024-01-19T20:30:00+05:30' },
+    { title: 'Annual Report FY2022-23', filename: 'RIL_Annual_Report_FY23.pdf', kind: 'annual', period: 'FY23', type: 'PDF', pages: 320, timestamp: '2023-08-05T12:00:00+05:30' },
+    { title: 'Earnings Call Q4 FY2022-23', filename: 'RIL_Concall_Transcript_Q4_FY23.pdf', kind: 'earnings', period: 'FY23', type: 'Transcript', pages: 19, timestamp: '2023-04-21T20:30:00+05:30' },
+]
+
+const documentsByTicker = {
+    RELIANCE: relianceDocuments,
+}
+
 function TrendLine({ direction }) {
     return (
         <svg
@@ -52,8 +68,11 @@ function TrendLine({ direction }) {
     )
 }
 
-export default function HomePage({ apiHealth, onCompanySelect, theme, onToggleTheme }) {
+export default function HomePage({ apiHealth, onCompanySelect, onToggleFollow, followedCompanies, theme, onToggleTheme }) {
     const [search, setSearch] = useState('')
+    const [selectedCompany, setSelectedCompany] = useState(null)
+    const [activeCompanyTab, setActiveCompanyTab] = useState('overview')
+    const [reportingPeriod, setReportingPeriod] = useState('')
 
     const filteredCompanies = companies.filter((company) =>
         `${company.name} ${company.ticker}`
@@ -62,7 +81,137 @@ export default function HomePage({ apiHealth, onCompanySelect, theme, onToggleTh
     )
 
     function selectCompany(company) {
-        onCompanySelect(company)
+        const documents = documentsByTicker[company.ticker] || []
+        const periods = [...new Set(documents.map((document) => document.period))]
+        setSelectedCompany(company)
+        setActiveCompanyTab('overview')
+        setReportingPeriod(periods[0] || '')
+    }
+
+    function backToSearch() {
+        setSelectedCompany(null)
+        setActiveCompanyTab('overview')
+    }
+
+    if (selectedCompany) {
+        const companyDocuments = documentsByTicker[selectedCompany.ticker] || []
+        const followed = followedCompanies.some((company) => company.ticker === selectedCompany.ticker)
+        const visibleDocuments = activeCompanyTab === 'annual'
+            ? companyDocuments.filter((document) => document.kind === 'annual')
+            : activeCompanyTab === 'earnings'
+                ? companyDocuments.filter((document) => document.kind === 'earnings')
+                : companyDocuments
+
+        return (
+            <main className={`home-page theme-${theme}`}>
+                <header className="home-nav">
+                    <button className="company-back-icon" type="button" onClick={backToSearch} aria-label="Back to company search" title="Back to company search">←</button>
+                    <div className="home-nav-title">Company overview</div>
+                    <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+                    <ApiStatusDot className="home-api-status" health={apiHealth} />
+                </header>
+
+                <section className="company-detail" aria-labelledby="company-detail-name">
+                    <div className="company-detail-heading">
+                        <span className="company-detail-initial" aria-hidden="true">{selectedCompany.initial}</span>
+                        <div className="company-detail-identity">
+                            <h1 id="company-detail-name">{selectedCompany.name}</h1>
+                            <p>NSE: {selectedCompany.ticker}</p>
+                        </div>
+                        <button
+                            className={followed ? 'company-follow-button followed' : 'company-follow-button'}
+                            type="button"
+                            aria-pressed={followed}
+                            onClick={() => onToggleFollow(selectedCompany)}
+                        >
+                            {followed ? 'Following' : 'Follow'}
+                        </button>
+                    </div>
+
+                    <nav className="company-detail-tabs" aria-label="Company information">
+                        {[
+                            ['overview', 'Overview'],
+                            ['annual', 'Annual Reports'],
+                            ['earnings', 'Earnings Calls'],
+                        ].map(([tab, label]) => (
+                            <button
+                                key={tab}
+                                className={activeCompanyTab === tab ? 'company-detail-tab active' : 'company-detail-tab'}
+                                type="button"
+                                aria-current={activeCompanyTab === tab ? 'page' : undefined}
+                                onClick={() => setActiveCompanyTab(tab)}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </nav>
+
+                    <div className="company-period-row">
+                        <label htmlFor="reporting-period">Reporting period</label>
+                        <select
+                            id="reporting-period"
+                            value={reportingPeriod}
+                            onChange={(event) => setReportingPeriod(event.target.value)}
+                            disabled={!companyDocuments.length}
+                        >
+                            {companyDocuments.length ? (
+                                [...new Set(companyDocuments.map((document) => document.period))].map((period, index) => (
+                                    <option key={period} value={period}>{period}{index === 0 ? ' (Latest available)' : ''}</option>
+                                ))
+                            ) : <option value="">Unavailable</option>}
+                        </select>
+                    </div>
+
+                    <div className="company-metrics" aria-label={`Financial metrics for ${reportingPeriod || 'selected period'}`}>
+                        {['Revenue', 'Net Profit', 'EPS'].map((metric) => (
+                            <article className="company-metric" key={metric}>
+                                <h2>{metric}</h2>
+                                <strong>Unavailable</strong>
+                                <span>No verified metric summary for {reportingPeriod || 'this company'}</span>
+                            </article>
+                        ))}
+                    </div>
+                    <p className="company-metric-note">Use a cited filing or ask ARIA to retrieve the reported value. No unsourced figures are shown here.</p>
+
+                    <section className="company-documents" aria-labelledby="available-documents-heading">
+                        <div className="company-documents-heading">
+                            <h2 id="available-documents-heading">
+                                {activeCompanyTab === 'annual' ? 'Annual Reports' : activeCompanyTab === 'earnings' ? 'Earnings Calls' : 'Available Documents'}
+                            </h2>
+                            <span>{visibleDocuments.length}</span>
+                        </div>
+                        {visibleDocuments.length ? (
+                            <div className="company-document-list">
+                                {visibleDocuments.map((document) => (
+                                    <a
+                                        className="company-document-row"
+                                        href={documentUrl(document.filename)}
+                                        key={document.filename}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                    >
+                                        <span className="company-document-icon" aria-hidden="true">▤</span>
+                                        <span className="company-document-copy">
+                                            <strong>{document.title}</strong>
+                                            <span>{document.type} · {document.pages} pages · Filed {new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium' }).format(new Date(document.timestamp))}</span>
+                                        </span>
+                                        <span className="company-document-arrow" aria-hidden="true">›</span>
+                                    </a>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="company-documents-empty">
+                                No indexed {activeCompanyTab === 'annual' ? 'annual reports' : activeCompanyTab === 'earnings' ? 'earnings calls' : 'documents'} are available for this company yet.
+                            </div>
+                        )}
+                    </section>
+
+                    <button className="company-ask-button" type="button" onClick={() => onCompanySelect(selectedCompany)}>
+                        Ask AI about this company <span aria-hidden="true">→</span>
+                    </button>
+                </section>
+            </main>
+        )
     }
 
     return (

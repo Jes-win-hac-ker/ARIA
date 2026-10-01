@@ -3603,7 +3603,9 @@ button:disabled {
   background: var(--canvas);
   color: var(--text-primary);
   position: relative;
-  overflow: hidden;
+  height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .home-nav {
@@ -3846,6 +3848,327 @@ button:disabled {
   padding: 25px;
   text-align: center;
   color: var(--text-muted);
+}
+
+.company-back-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.company-back-icon:hover {
+  background: var(--surface-subtle);
+  color: var(--text-primary);
+}
+
+.company-detail {
+  width: min(100%, 1040px);
+  margin: 0 auto;
+  padding: 28px 24px 56px;
+}
+
+.company-detail-heading {
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  gap: 15px;
+  padding: 5px 0 20px;
+}
+
+.company-detail-initial {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.company-detail-identity {
+  min-width: 0;
+  flex: 1;
+}
+
+.company-detail-identity h1 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 23px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.company-detail-identity p {
+  margin: 5px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.company-follow-button {
+  min-width: 86px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--accent);
+  border-radius: 7px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.company-follow-button.followed {
+  background: var(--surface);
+  color: var(--accent);
+}
+
+.company-detail-tabs {
+  display: flex;
+  gap: 22px;
+  overflow-x: auto;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.company-detail-tab {
+  min-height: 44px;
+  flex: 0 0 auto;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.company-detail-tab.active {
+  border-bottom-color: var(--accent);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.company-period-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.company-period-row label {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.company-period-row select {
+  width: min(230px, 65%);
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+}
+
+.company-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.company-metric {
+  display: flex;
+  min-height: 128px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.company-metric h2 {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.company-metric strong {
+  color: var(--text-primary);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.company-metric span,
+.company-metric-note {
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.company-metric-note {
+  margin: 10px 0 0;
+}
+
+.company-documents {
+  margin-top: 30px;
+}
+
+.company-documents-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.company-documents-heading h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.company-documents-heading>span {
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.company-document-list {
+  display: grid;
+  gap: 8px;
+}
+
+.company-document-row {
+  display: flex;
+  min-height: 62px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.company-document-row:hover {
+  border-color: var(--border-light);
+  background: var(--card-hover);
+}
+
+.company-document-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 6px;
+  background: var(--surface-subtle);
+  color: var(--accent);
+  font-size: 15px;
+}
+
+.company-document-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 4px;
+}
+
+.company-document-copy strong {
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.company-document-copy>span {
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.company-document-arrow {
+  color: var(--text-muted);
+  font-size: 20px;
+}
+
+.company-documents-empty {
+  padding: 20px;
+  border: 1px dashed var(--border-light);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.company-ask-button {
+  display: flex;
+  width: 100%;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 24px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.company-ask-button:hover {
+  background: var(--accent-hover);
+}
+
+@media (max-width: 650px) {
+  .company-detail {
+    padding: 20px 14px 36px;
+  }
+
+  .company-detail-heading {
+    gap: 10px;
+  }
+
+  .company-detail-identity h1 {
+    font-size: 18px;
+  }
+
+  .company-metrics {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .company-metric {
+    min-height: 98px;
+  }
+
+  .company-detail-tabs {
+    gap: 16px;
+  }
 }
 
 .theme-dark.landing-page {

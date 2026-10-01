@@ -36,6 +36,21 @@ class HealthTests(TestCase):
         self.assertEqual(response.json()['name'], 'ARIA')
 
 
+class DocumentViewTests(TestCase):
+    def test_serves_allowlisted_pdf_inline(self):
+        response = self.client.get('/api/documents/RIL_Annual_Report_FY24.pdf/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertTrue(response['Content-Disposition'].startswith('inline;'))
+        response.close()
+
+    def test_rejects_unknown_document_filename(self):
+        response = self.client.get('/api/documents/settings.py/')
+
+        self.assertEqual(response.status_code, 404)
+
+
 class ToolUnitTests(TestCase):
     def setUp(self):
         # Create test records
