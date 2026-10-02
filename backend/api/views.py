@@ -382,3 +382,22 @@ def ask(request):
     add_session_token_usage(session=session, tokens=token_usage)
 
     return Response(validated.model_dump())
+
+
+@api_view(['DELETE'])
+@permission_classes([])
+def delete_session(request, session_id: str) -> Response:
+    """
+    Perform a cascade delete on the ChatSession model, which automatically
+    deletes all related Message and ToolCall rows in MySQL due to
+    on_delete=models.CASCADE foreign keys.
+    Returns 200 OK with {"status": "data_erased"}.
+    """
+    try:
+        session = ChatSession.objects.get(session_id=session_id)
+    except ChatSession.DoesNotExist:
+        return Response({'error': 'Session not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    session.delete()
+    return Response({'status': 'data_erased'}, status=status.HTTP_200_OK)
+
