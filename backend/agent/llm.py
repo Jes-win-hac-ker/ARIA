@@ -84,45 +84,53 @@ def _call_gemini_api(
     token_cap: int = 2000,
     timeout: int = 15,
 ) -> tuple[str | None, int]:
-    """Calls Google Gemini API using REST HTTPS."""
-    target_model = _normalize_gemini_model(model)
-    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{target_model}:generateContent?key={api_key}"
-    payload = {
-        "contents": [
-            {
-                "role": "user",
-                "parts": [{"text": prompt}],
-            }
-        ],
-        "systemInstruction": {
-            "parts": [{"text": system_prompt}],
-        },
-        "generationConfig": {
-            "temperature": 0.1,
-            "maxOutputTokens": token_cap,
-        },
-    }
-    data = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(
-        endpoint,
-        data=data,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
+    """Calls Google Gemini API using REST HTTPS with automatic model fallback."""
+    preferred = _normalize_gemini_model(model)
+    candidates = [preferred]
+    for fallback in ["gemini-flash-latest", "gemini-2.5-flash"]:
+        if fallback not in candidates:
+            candidates.append(fallback)
 
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as response:
-            res_data = json.loads(response.read().decode("utf-8"))
-            candidates = res_data.get("candidates", [])
-            if candidates:
-                parts = candidates[0].get("content", {}).get("parts", [])
-                text = "".join(p.get("text", "") for p in parts).strip()
-                usage = res_data.get("usageMetadata", {})
-                tokens = usage.get("totalTokenCount", len(text.split()))
-                return text, tokens
-    except Exception:
-        pass
+    for target_model in candidates:
+        endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{target_model}:generateContent?key={api_key}"
+        payload = {
+            "contents": [
+                {
+                    "role": "user",
+                    "parts": [{"text": prompt}],
+                }
+            ],
+            "systemInstruction": {
+                "parts": [{"text": system_prompt}],
+            },
+            "generationConfig": {
+                "temperature": 0.1,
+                "maxOutputTokens": max(token_cap, 2000),
+            },
+        }
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            endpoint,
+            data=data,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as response:
+                res_data = json.loads(response.read().decode("utf-8"))
+                candidates_res = res_data.get("candidates", [])
+                if candidates_res:
+                    parts = candidates_res[0].get("content", {}).get("parts", [])
+                    text = "".join(p.get("text", "") for p in parts).strip()
+                    if text:
+                        usage = res_data.get("usageMetadata", {})
+                        tokens = usage.get("totalTokenCount", len(text.split()))
+                        return text, tokens
+        except Exception:
+            continue
     return None, 0
+
 
 
 def _call_ollama_api(
