@@ -85,11 +85,11 @@ else:
         except ImportError:
             pass
 
-    db_name = env('MYSQL_DATABASE') or env('DB_NAME') or 'stock'
-    db_user = env('MYSQL_USER') or env('DB_USER') or 'stock_analyst'
-    db_password = env('MYSQL_PASSWORD') or env('DB_PASSWORD') or 'stockpass'
-    db_host = env('MYSQL_HOST') or env('DB_HOST') or 'db'
-    db_port = env('MYSQL_PORT') or env('DB_PORT') or '3306'
+    db_name = os.environ.get('MYSQLDATABASE', os.environ.get('MYSQL_DATABASE', 'aria'))
+    db_user = os.environ.get('MYSQLUSER', os.environ.get('MYSQL_USER', 'root'))
+    db_password = os.environ.get('MYSQLPASSWORD', os.environ.get('MYSQL_PASSWORD', ''))
+    db_host = os.environ.get('MYSQLHOST', os.environ.get('MYSQL_HOST', 'localhost'))
+    db_port = os.environ.get('MYSQLPORT', os.environ.get('MYSQL_PORT', '3306'))
 
     DATABASES = {
         'default': {
