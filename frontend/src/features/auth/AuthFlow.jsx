@@ -1,5 +1,7 @@
-import { useState } from 'react'
-import { ApiStatusDot, BrandSymbol, ThemeToggle } from '../../shared/ARIAUI.jsx'
+import { useEffect, useState } from 'react'
+import { getMarketMovers } from '../../api/client.js'
+import { companies } from '../companies/companyData.js'
+import { ApiStatusDot, BrandSymbol, CompanyLogo, ThemeToggle } from '../../shared/ARIAUI.jsx'
 
 function BrandMark() {
     return (
@@ -118,6 +120,24 @@ export function LoginPage({ apiHealth, theme, onToggleTheme, onLogin }) {
 }
 
 export function LandingPage({ apiHealth, onStart, theme, onToggleTheme }) {
+    const [marketMovers, setMarketMovers] = useState([])
+
+    useEffect(() => {
+        let cancelled = false
+        getMarketMovers()
+            .then((data) => {
+                if (!cancelled) setMarketMovers(Array.isArray(data.movers) ? data.movers : [])
+            })
+            .catch(() => {
+                if (!cancelled) setMarketMovers([])
+            })
+        return () => {
+            cancelled = true
+        }
+    }, [])
+
+    const quoteByTicker = new Map(marketMovers.map((quote) => [quote.ticker, quote]))
+
     return (
         <main className={`landing-page theme-${theme}`}>
             <header className="landing-nav">
@@ -150,32 +170,27 @@ export function LandingPage({ apiHealth, onStart, theme, onToggleTheme }) {
                             <button type="button" onClick={onStart} title="Open the research workspace to add a ticker">＋ Add</button>
                         </div>
                         <div className="ticker-preview-list">
-                            <article className="ticker-row">
-                                <span className="ticker-symbol reliance" aria-hidden="true">RIL</span>
-                                <span className="ticker-name">Reliance</span>
-                                <span className="ticker-price">Unavailable</span>
-                                <span className="ticker-change">Quote source not configured</span>
-                            </article>
-                            <article className="ticker-row">
-                                <span className="ticker-symbol apple" aria-hidden="true">AAPL</span>
-                                <span className="ticker-name">Apple Inc.</span>
-                                <span className="ticker-price">Unavailable</span>
-                                <span className="ticker-change">Quote source not configured</span>
-                            </article>
-                            <article className="ticker-row">
-                                <span className="ticker-symbol microsoft" aria-hidden="true">MSFT</span>
-                                <span className="ticker-name">Microsoft</span>
-                                <span className="ticker-price">Unavailable</span>
-                                <span className="ticker-change">Quote source not configured</span>
-                            </article>
-                            <article className="ticker-row">
-                                <span className="ticker-symbol nvidia" aria-hidden="true">NVDA</span>
-                                <span className="ticker-name">NVIDIA</span>
-                                <span className="ticker-price">Unavailable</span>
-                                <span className="ticker-change">Quote source not configured</span>
-                            </article>
+                            {companies.slice(0, 4).map((company) => {
+                                const quote = quoteByTicker.get(company.ticker)
+                                const hasPrice = quote?.found && quote.price !== null && quote.price !== undefined
+                                const changeLabel = quote?.change_pct === null || quote?.change_pct === undefined
+                                    ? 'Change unavailable'
+                                    : `${Number(quote.change_pct) >= 0 ? '+' : ''}${quote.change_pct}%`
+                                return (
+                                    <article className="ticker-row" key={company.ticker}>
+                                        <CompanyLogo className="ticker-symbol" company={company} />
+                                        <span className="ticker-name">{company.name}</span>
+                                        <span className="ticker-price" title={hasPrice ? `${quote.source} · Trade date ${quote.trade_date}` : undefined}>
+                                            {hasPrice ? `₹${Number(quote.price).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Unavailable'}
+                                        </span>
+                                        <span className={`ticker-change ${quote?.change_pct < 0 ? 'negative' : 'positive'}`} title={hasPrice ? `Stored NSE quote · Trade date ${quote.trade_date}` : undefined}>
+                                            {hasPrice ? `${changeLabel} · ${quote.trade_date}` : 'Quote data unavailable'}
+                                        </span>
+                                    </article>
+                                )
+                            })}
                         </div>
-                        <p className="ticker-preview-note">No prices or daily moves shown without a permitted, timestamped source.</p>
+                        <p className="ticker-preview-note">Stored NSE closing data · Trade date {marketMovers[0]?.trade_date || 'unavailable'} · Historical/stale, not live.</p>
                     </div>
                 </div>
             </section>

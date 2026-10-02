@@ -1,5 +1,24 @@
+import { useState } from 'react'
+
 export function Icon({ name, children }) {
   return <span className={`icon icon-${name}`} aria-hidden="true">{children}</span>
+}
+
+export function CompanyLogo({ company, detail = false, className = '' }) {
+  const [failed, setFailed] = useState(false)
+  const classes = [detail ? 'company-detail-logo' : 'company-initial', className].filter(Boolean).join(' ')
+
+  return (
+    <span className={classes} aria-hidden="true">
+      {failed ? company.initial : (
+        <img
+          src={company.logo}
+          alt=""
+          onError={() => setFailed(true)}
+        />
+      )}
+    </span>
+  )
 }
 
 export function ApiStatusDot({ health, className = '' }) {
