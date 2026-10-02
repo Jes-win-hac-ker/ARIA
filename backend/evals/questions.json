@@ -136,6 +136,14 @@
     "expected_numeric_result": 10.0
   },
   {
+    "id": "numeric_calc_03",
+    "category": "numeric_calculation",
+    "question": "What is the net profit margin if revenue is 12000 and profit is 2400?",
+    "expected_refused": false,
+    "expected_tools": ["financial_calculator"],
+    "expected_numeric_result": 20.0
+  },
+  {
     "id": "fundamentals_01",
     "category": "tool_routing",
     "question": "Look up recorded historical FY24 total revenue and debt metrics for Reliance Industries.",

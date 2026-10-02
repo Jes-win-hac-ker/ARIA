@@ -252,7 +252,7 @@ def ask(request):
     calc_math_val, _ = calculate_math(question)
     has_company = any(k in q_lower for k in ['reliance', 'tcs', 'infy', 'infosys'])
     has_fund_kw = any(k in q_lower for k in ['pe ratio', 'revenue', 'debt', 'fundamentals', 'price', 'kitna', 'kya']) or any(k in conversation_history.lower() for k in ['margin', 'pe ratio', 'revenue', 'debt', 'fundamentals'])
-    if has_company or (calc_math_val is None and has_fund_kw):
+    if calc_math_val is None and (has_company or has_fund_kw):
         ticker = 'RELIANCE' if 'reliance' in q_lower else ('TCS' if 'tcs' in q_lower else 'INFY')
         real_fund = fundamentals_lookup(ticker)
         if real_fund.get('found'):
