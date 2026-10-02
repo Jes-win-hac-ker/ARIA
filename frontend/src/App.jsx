@@ -2,6 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { askQuestion, deleteSession, healthCheck, mockMode } from './api/client.js'
 import { clearStoredSessionId, getSessionId, setStoredSessionId } from './utils/session.js'
 import { readFollowedCompanies, readSavedReports, readStoredMessages, readStoredTheme, writeStoredTheme, writeStoredValue } from './utils/storage.js'
+import { ApiStatusDot, BrandSymbol, Icon, ThemeToggle } from './shared/ARIAUI.jsx'
+import { LandingPage, LoginPage } from './features/auth/AuthFlow.jsx'
+import FollowedCompaniesView from './features/companies/FollowedCompaniesView.jsx'
+import ResearchHistoryView from './features/research/ResearchHistoryView.jsx'
+import ResearchWorkspace from './features/research/ResearchWorkspace.jsx'
+import SettingsDialog from './features/settings/SettingsDialog.jsx'
+import HomePage from './HomePage.jsx'
+
 export default function App() {
     const [entryPage, setEntryPage] = useState('login')
     const [health, setHealth] = useState('checking')
