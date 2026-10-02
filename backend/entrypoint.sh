@@ -5,6 +5,10 @@ set -e
 echo "Applying database migrations..."
 python manage.py migrate --noinput
 
+# Seed corporate fundamentals if not already seeded
+echo "Seeding market data and corporate fundamentals..."
+python manage.py load_market_data || true
+
 # Start the Gunicorn server
 echo "Starting Gunicorn..."
 PORT="${PORT:-8000}"
