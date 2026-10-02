@@ -1,4 +1,4 @@
-const SESSION_STORAGE_KEY = 'aria-frontend-session-id'
+export const SESSION_STORAGE_KEY = 'aria_session_id'
 
 export function getSessionId() {
   try {
@@ -9,6 +9,25 @@ export function getSessionId() {
     }
     return sessionId
   } catch {
-    return 'browser-storage-unavailable'
+    return globalThis.crypto?.randomUUID?.() || 'browser-storage-unavailable'
   }
 }
+
+export function setStoredSessionId(id) {
+  try {
+    if (id) {
+      window.localStorage.setItem(SESSION_STORAGE_KEY, id)
+    }
+  } catch {
+    // ignore storage exceptions
+  }
+}
+
+export function clearStoredSessionId() {
+  try {
+    window.localStorage.removeItem(SESSION_STORAGE_KEY)
+  } catch {
+    // ignore storage exceptions
+  }
+}
+

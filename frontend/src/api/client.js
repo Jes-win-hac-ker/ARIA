@@ -36,7 +36,7 @@ export async function getMarketMovers() {
   return response.json()
 }
 
-export async function askQuestion(question) {
+export async function askQuestion(question, sessionId = null) {
   if (mockMode) {
     return {
       answer: 'Mock mode is enabled. This placeholder contains no financial research or factual company data.',
@@ -48,13 +48,19 @@ export async function askQuestion(question) {
       token_usage: 0,
       correlation_id: createMockCorrelationId(),
       latency_ms: 0,
+      session_id: sessionId || createMockCorrelationId(),
     }
+  }
+
+  const payload = { question }
+  if (sessionId) {
+    payload.session_id = sessionId
   }
 
   const response = await fetch(`${API_BASE}/api/ask/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question }),
+    body: JSON.stringify(payload),
   })
   if (!response.ok) {
     throw new Error(`Request failed with HTTP ${response.status}`)
@@ -62,3 +68,25 @@ export async function askQuestion(question) {
 
   return response.json()
 }
+
+export async function deleteSession(sessionId) {
+  if (!sessionId) return { status: 'data_erased' }
+  if (mockMode) {
+    return { status: 'data_erased' }
+  }
+
+  const response = await fetch(`${API_BASE}/api/sessions/${encodeURIComponent(sessionId)}/`, {
+    method: 'DELETE',
+  })
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`Delete session failed with HTTP ${response.status}`)
+  }
+
+  try {
+    const text = await response.text()
+    return text ? JSON.parse(text) : { status: 'data_erased' }
+  } catch {
+    return { status: 'data_erased' }
+  }
+}
+

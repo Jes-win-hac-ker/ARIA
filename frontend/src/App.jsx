@@ -1,19 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { askQuestion, healthCheck, mockMode } from './api/client.js'
-import { getSessionId } from './utils/session.js'
-import { readFollowedCompanies, readSavedReports, readStoredTheme, writeStoredTheme, writeStoredValue } from './utils/storage.js'
-import { ApiStatusDot, BrandSymbol, Icon, ThemeToggle } from './shared/ARIAUI.jsx'
-import { LandingPage, LoginPage } from './features/auth/AuthFlow.jsx'
-import FollowedCompaniesView from './features/companies/FollowedCompaniesView.jsx'
-import ResearchHistoryView from './features/research/ResearchHistoryView.jsx'
-import ResearchWorkspace from './features/research/ResearchWorkspace.jsx'
-import SettingsDialog from './features/settings/SettingsDialog.jsx'
-import HomePage from './HomePage.jsx'
-
+import { askQuestion, deleteSession, healthCheck, mockMode } from './api/client.js'
+import { clearStoredSessionId, getSessionId, setStoredSessionId } from './utils/session.js'
+import { readFollowedCompanies, readSavedReports, readStoredMessages, readStoredTheme, writeStoredTheme, writeStoredValue } from './utils/storage.js'
 export default function App() {
     const [entryPage, setEntryPage] = useState('login')
     const [health, setHealth] = useState('checking')
-    const [sessionId] = useState(getSessionId)
+    const [sessionId, setSessionId] = useState(getSessionId)
     const [activeSection, setActiveSection] = useState('research')
     const [theme, setTheme] = useState(readStoredTheme)
     const [followedCompanies, setFollowedCompanies] = useState(readFollowedCompanies)
@@ -26,7 +18,7 @@ export default function App() {
     const [settingsNotice, setSettingsNotice] = useState('')
     const [question, setQuestion] = useState('')
     const [command, setCommand] = useState('')
-    const [messages, setMessages] = useState([])
+    const [messages, setMessages] = useState(readStoredMessages)
     const [researchCompany, setResearchCompany] = useState(null)
     const [error, setError] = useState(null)
     const [loading, setLoading] = useState(false)
@@ -41,6 +33,14 @@ export default function App() {
             .then((data) => setHealth(data.status === 'ok' && data.database ? 'connected' : 'degraded'))
             .catch(() => setHealth('unreachable'))
     }, [])
+
+    useEffect(() => {
+        try {
+            window.localStorage.setItem('aria_messages', JSON.stringify(messages))
+        } catch {
+            // ignore storage quota errors
+        }
+    }, [messages])
 
     useEffect(() => {
         try {
@@ -110,6 +110,7 @@ export default function App() {
         const submittedQuestion = (question || command).trim()
         if (!submittedQuestion || loading) return
 
+        const currentSessionId = sessionId || getSessionId()
         const messageId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`
         setError(null)
         setQuestion('')
@@ -128,7 +129,11 @@ export default function App() {
         setLoading(true)
 
         try {
-            const result = await askQuestion(submittedQuestion)
+            const result = await askQuestion(submittedQuestion, currentSessionId)
+            if (result?.session_id) {
+                setStoredSessionId(result.session_id)
+                setSessionId(result.session_id)
+            }
             setMessages((current) =>
                 current.map((message) => (message.id === messageId ? { ...message, response: result } : message)),
             )
@@ -140,6 +145,33 @@ export default function App() {
         } finally {
             setLoading(false)
         }
+    }
+
+    async function handleClearHistory() {
+        const idToDelete = sessionId || getSessionId()
+        if (idToDelete) {
+            try {
+                await deleteSession(idToDelete)
+            } catch (deleteError) {
+                console.warn('Backend session deletion notice:', deleteError)
+            }
+        }
+        clearStoredSessionId()
+        try {
+            window.localStorage.removeItem('aria_messages')
+        } catch {}
+        const newId = globalThis.crypto?.randomUUID?.() || `aria-${Date.now()}`
+        setStoredSessionId(newId)
+        setSessionId(newId)
+        setMessages([])
+        setError(null)
+        setQuestion('')
+        setCommand('')
+        setResearchCompany(null)
+        setSelectedCitation(null)
+        setActiveTab('sources')
+        setSettingsNotice('Chat history erased for DPDP compliance.')
+        composerRef.current?.focus()
     }
 
     function startNewResearch() {
@@ -345,6 +377,15 @@ export default function App() {
                                 <Icon name="add">＋</Icon>
                                 <span>New research session</span>
                             </button>
+                            <button
+                                className="clear-history-button"
+                                type="button"
+                                onClick={handleClearHistory}
+                                title="Cascade-delete session data from MySQL (DPDP)"
+                            >
+                                <Icon name="delete">🗑</Icon>
+                                <span>Clear Chat (DPDP)</span>
+                            </button>
                         </div>
                         <div className="sidebar-scroll">
                             <div className="sidebar-label">WORKSPACE</div>
@@ -435,6 +476,8 @@ export default function App() {
                             setActiveTab={setActiveTab}
                             selectedCitation={selectedCitation}
                             setSelectedCitation={setSelectedCitation}
+                            sessionId={sessionId}
+                            onClearHistory={handleClearHistory}
                         />
                     )}
                 </main>

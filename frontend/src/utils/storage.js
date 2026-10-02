@@ -45,3 +45,12 @@ export function readSavedReports() {
 export function writeStoredValue(key, value) {
     window.localStorage.setItem(key, JSON.stringify(value))
 }
+
+export function readStoredMessages() {
+    try {
+        const stored = JSON.parse(window.localStorage.getItem('aria_messages') || '[]')
+        return Array.isArray(stored) ? stored : []
+    } catch {
+        return []
+    }
+}

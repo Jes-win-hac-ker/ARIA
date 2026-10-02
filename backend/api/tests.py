@@ -199,6 +199,8 @@ class ToolUnitTests(TestCase):
 
 class AskEndpointTests(TestCase):
     def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
         CompanyFundamental.objects.create(
             tckr_symb='RELIANCE',
             company_name='Reliance Industries Limited',

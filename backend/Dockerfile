@@ -46,9 +46,12 @@ COPY --chown=aria:aria api ./api
 COPY --chown=aria:aria agent ./agent
 COPY --chown=aria:aria rag ./rag
 COPY --chown=aria:aria evals ./evals
+COPY --chown=aria:aria entrypoint.sh /app/entrypoint.sh
 
-RUN mkdir -p /app/staticfiles && chown -R aria:aria /app
+RUN chmod +x /app/entrypoint.sh && mkdir -p /app/staticfiles && chown -R aria:aria /app
 
 USER aria
 
 EXPOSE 8000
+
+ENTRYPOINT ["/app/entrypoint.sh"]

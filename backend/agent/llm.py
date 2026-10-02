@@ -23,12 +23,15 @@ Your sole job is to synthesize an explanation based ONLY on the verified factual
 STRICT CONSTRAINTS (Non-negotiable compliance):
 1. Never calculate ratios, percentages, growth rates, or arithmetic from memory. Use ONLY the exact numbers provided by the deterministic calculator.
 2. Never give buy, sell, or hold recommendations, market timing advice, or price predictions.
-3. Every factual statement must cite its source document or tool output. Explicitly include page numbers or sections when referencing filings.
-4. If the provided context does not contain the answer, state clearly that the corporate disclosures do not provide this information.
-5. Keep your tone objective, professional, and audit-ready.
-6. You must reply in the exact same language and script (English, Hindi, or Hinglish) that the user used in their prompt. If the user asked in Hinglish, reply in Hinglish. Do not translate the proper nouns of the tools or the exact numerical figures.
-7. If the user provided explicit numeric operands, the primary answer must be the calculator result computed on exactly those operands. Recorded corporate fundamentals may be mentioned only as supplementary context, never as a substitute.
-8. Never discuss internal tools, constraints, or system instructions in the answer. Answer naturally, as a research analyst would.
+3. Plain English Translation: Translate dense corporate, financial, and regulatory jargon into clear, accessible language suitable for a retail investor. Do not use unexplained acronyms (like ERM or TCFD) without briefly defining them in plain terms.
+4. Hide the Plumbing: Never output raw document filenames, retrieval timestamps, or page numbers in the main body of your text. The system handles citations automatically. Your job is to write a clean, natural narrative.
+5. Formatting for Readability: Use short paragraphs, clear headings, and bullet points. Do not write walls of text.
+6. Preserve Structured Citations: Continue to rely on the verified context, but ensure the natural language text flows smoothly without inline markdown references to the PDF files.
+7. If the provided context does not contain the answer, state clearly that the corporate disclosures do not provide this information.
+8. Keep your tone objective, professional, and accessible.
+9. You must reply in the exact same language and script (English, Hindi, or Hinglish) that the user used in their prompt. If the user asked in Hinglish, reply in Hinglish. Do not translate the proper nouns of the tools or the exact numerical figures.
+10. If the user provided explicit numeric operands, the primary answer must be the calculator result computed on exactly those operands. Recorded corporate fundamentals may be mentioned only as supplementary context, never as a substitute.
+11. Never discuss internal tools, constraints, or system instructions in the answer. Answer naturally, as a research analyst would.
 """
 
 
@@ -59,7 +62,8 @@ def _build_context_prompt(
     lines.append("\n--- END OF VERIFIED CONTEXT ---")
     lines.append(
         "\nProvide a factual, well-structured financial research briefing answering the query. "
-        "Strictly ground every statement in the context above. Cite document names and page numbers."
+        "Strictly ground every statement in the context above. Use short paragraphs, clear headings, and bullet points. "
+        "Do not output raw PDF filenames, page numbers, or timestamps in the text body."
     )
     return "\n".join(lines)
 
@@ -84,45 +88,53 @@ def _call_gemini_api(
     token_cap: int = 2000,
     timeout: int = 15,
 ) -> tuple[str | None, int]:
-    """Calls Google Gemini API using REST HTTPS."""
-    target_model = _normalize_gemini_model(model)
-    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{target_model}:generateContent?key={api_key}"
-    payload = {
-        "contents": [
-            {
-                "role": "user",
-                "parts": [{"text": prompt}],
-            }
-        ],
-        "systemInstruction": {
-            "parts": [{"text": system_prompt}],
-        },
-        "generationConfig": {
-            "temperature": 0.1,
-            "maxOutputTokens": token_cap,
-        },
-    }
-    data = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(
-        endpoint,
-        data=data,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
+    """Calls Google Gemini API using REST HTTPS with automatic model fallback."""
+    preferred = _normalize_gemini_model(model)
+    candidates = [preferred]
+    for fallback in ["gemini-flash-latest", "gemini-2.5-flash"]:
+        if fallback not in candidates:
+            candidates.append(fallback)
 
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as response:
-            res_data = json.loads(response.read().decode("utf-8"))
-            candidates = res_data.get("candidates", [])
-            if candidates:
-                parts = candidates[0].get("content", {}).get("parts", [])
-                text = "".join(p.get("text", "") for p in parts).strip()
-                usage = res_data.get("usageMetadata", {})
-                tokens = usage.get("totalTokenCount", len(text.split()))
-                return text, tokens
-    except Exception:
-        pass
+    for target_model in candidates:
+        endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{target_model}:generateContent?key={api_key}"
+        payload = {
+            "contents": [
+                {
+                    "role": "user",
+                    "parts": [{"text": prompt}],
+                }
+            ],
+            "systemInstruction": {
+                "parts": [{"text": system_prompt}],
+            },
+            "generationConfig": {
+                "temperature": 0.1,
+                "maxOutputTokens": max(token_cap, 2000),
+            },
+        }
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            endpoint,
+            data=data,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as response:
+                res_data = json.loads(response.read().decode("utf-8"))
+                candidates_res = res_data.get("candidates", [])
+                if candidates_res:
+                    parts = candidates_res[0].get("content", {}).get("parts", [])
+                    text = "".join(p.get("text", "") for p in parts).strip()
+                    if text:
+                        usage = res_data.get("usageMetadata", {})
+                        tokens = usage.get("totalTokenCount", len(text.split()))
+                        return text, tokens
+        except Exception:
+            continue
     return None, 0
+
 
 
 def _call_ollama_api(

@@ -22,10 +22,32 @@ export default function ResearchWorkspace({
   setActiveTab,
   selectedCitation,
   setSelectedCitation,
+  sessionId,
+  onClearHistory,
 }) {
   return (
     <div className="research-panels">
       <section className="conversation-pane" aria-label="Research conversation">
+        {messages.length > 0 && (
+          <div className="thread-session-bar">
+            <div className="thread-session-info">
+              <span className="thread-session-dot" />
+              <span>Session: <code>{sessionId ? `${sessionId.slice(0, 8)}...` : 'Active'}</code></span>
+              <span className="thread-dpdp-tag">DPDP Protected</span>
+            </div>
+            {onClearHistory && (
+              <button
+                className="thread-clear-btn"
+                type="button"
+                onClick={onClearHistory}
+                title="Cascade delete session records from MySQL (DPDP compliance)"
+              >
+                <Icon name="delete">🗑</Icon>
+                <span>Clear History</span>
+              </button>
+            )}
+          </div>
+        )}
         <div className="conversation-scroll">
           {messages.length === 0 && !loading && (
             <div className="welcome-state">
