@@ -87,7 +87,7 @@ def calculate_math(question: str) -> tuple[float | None, dict[str, Any] | None]:
     return None, None
 
 
-def route_and_execute(question: str) -> tuple[str, list[ToolOutput], list[Citation], list[str]]:
+def route_and_execute(question: str, conversation_history: str = "") -> tuple[str, list[ToolOutput], list[Citation], list[str]]:
     """
     Deterministically routes questions to required tools:
     - financial_calculator: math, ratios, YoY growth, margins
@@ -183,7 +183,7 @@ def route_and_execute(question: str) -> tuple[str, list[ToolOutput], list[Citati
         "share price", "price of", "'s price", "price",
         "kitna", "kya", "margin", "revenue", "debt"
     ]
-    if any(kw in lower_q for kw in fundamentals_keywords):
+    if any(kw in lower_q for kw in fundamentals_keywords) or (has_company and any(kw in conversation_history.lower() for kw in fundamentals_keywords)):
         tool_outputs.append(
             ToolOutput(
                 tool_name="fundamentals_lookup",

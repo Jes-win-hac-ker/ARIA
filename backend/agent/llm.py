@@ -181,6 +181,7 @@ def synthesize_research_answer(
     tool_outputs: list[ToolOutput],
     citations: list[Citation],
     default_answer: str,
+    conversation_history: str = "",
 ) -> tuple[str, int, int, list[str]]:
     """
     Synthesize natural language response using Hybrid LLM engine.
@@ -199,12 +200,22 @@ def synthesize_research_answer(
     # Build grounded factual prompt
     prompt = _build_context_prompt(question, tool_outputs, citations)
 
+    # Contextual system prompt with conversation history for Gemini / Ollama
+    system_prompt = ARIA_SYSTEM_PROMPT
+    if conversation_history:
+        system_prompt = (
+            f"{ARIA_SYSTEM_PROMPT}\n\n"
+            f"--- RECENT CONVERSATION HISTORY ---\n"
+            f"{conversation_history}\n"
+            f"--- END CONVERSATION HISTORY ---"
+        )
+
     # 1. Attempt Gemini API
     if api_key:
         model = os.environ.get("LLM_MODEL_NAME") or "gemini-flash-latest"
         text, tokens = _call_gemini_api(
             prompt=prompt,
-            system_prompt=ARIA_SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             api_key=api_key,
             model=model,
             token_cap=token_cap,
@@ -218,7 +229,7 @@ def synthesize_research_answer(
     ollama_model = os.environ.get("OLLAMA_MODEL") or "llama3.2"
     text, tokens = _call_ollama_api(
         prompt=prompt,
-        system_prompt=ARIA_SYSTEM_PROMPT,
+        system_prompt=system_prompt,
         host=ollama_host,
         model=ollama_model,
         token_cap=token_cap,

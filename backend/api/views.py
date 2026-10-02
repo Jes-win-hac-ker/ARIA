@@ -35,7 +35,7 @@ from .memory import (
     record_tool_call,
     record_user_message,
 )
-from .models import Bhavcopy, ChatSession, CompanyFundamental
+from .models import Bhavcopy, ChatSession, CompanyFundamental, Message
 from .schemas import AgentResponse, Citation, ToolOutput
 
 AVAILABLE_PDF_DOCUMENTS = frozenset({
@@ -221,8 +221,18 @@ def ask(request):
     session, _ = get_or_create_session(session_id=session_id)
     user_msg = record_user_message(session=session, content=question, correlation_id=correlation_id)
 
+    # Fetch the last 3 Message objects for the current session_id from MySQL, ordered by -created_at
+    recent_messages = list(
+        Message.objects.filter(session=session).order_by('-created_at')[:3]
+    )
+    conversation_history = "\n".join(
+        f"{m.role.capitalize()}: {m.content}" for m in reversed(recent_messages)
+    )
+
     # 3. Deterministic tool routing & execution
-    answer, tool_outputs, citations, warnings = route_and_execute(question)
+    answer, tool_outputs, citations, warnings = route_and_execute(
+        question, conversation_history=conversation_history
+    )
 
     # Augment with real FAISS RAG citations if filing retrieval query
     q_lower = question.lower()
@@ -241,7 +251,7 @@ def ask(request):
     # Augment with real MySQL fundamentals if fundamentals lookup query
     calc_math_val, _ = calculate_math(question)
     has_company = any(k in q_lower for k in ['reliance', 'tcs', 'infy', 'infosys'])
-    has_fund_kw = any(k in q_lower for k in ['pe ratio', 'revenue', 'debt', 'fundamentals', 'price', 'kitna', 'kya'])
+    has_fund_kw = any(k in q_lower for k in ['pe ratio', 'revenue', 'debt', 'fundamentals', 'price', 'kitna', 'kya']) or any(k in conversation_history.lower() for k in ['margin', 'pe ratio', 'revenue', 'debt', 'fundamentals'])
     if has_company or (calc_math_val is None and has_fund_kw):
         ticker = 'RELIANCE' if 'reliance' in q_lower else ('TCS' if 'tcs' in q_lower else 'INFY')
         real_fund = fundamentals_lookup(ticker)
@@ -271,7 +281,8 @@ def ask(request):
 
             fund_dict = real_fund.get('fundamentals') or {}
             # If query asks about net profit margin and numbers are in fundamentals:
-            if calc_math_val is None and 'margin' in q_lower and fund_dict.get('net_profit_cr') and fund_dict.get('revenue_cr'):
+            is_margin = 'margin' in q_lower or 'margin' in conversation_history.lower()
+            if calc_math_val is None and is_margin and fund_dict.get('net_profit_cr') and fund_dict.get('revenue_cr'):
                 np_cr = float(fund_dict['net_profit_cr'])
                 rev_cr = float(fund_dict['revenue_cr'])
                 margin_val = round((np_cr / rev_cr) * 100, 2)
@@ -293,6 +304,11 @@ def ask(request):
                             source='deterministic_calculator_v1',
                             timestamp=timezone.now().isoformat(),
                         )
+                    )
+                if not is_hinglish_or_hindi(question):
+                    answer = (
+                        f"The calculated net profit margin for {ticker} is {margin_val}% "
+                        f"(based on recorded revenue of ₹{rev_cr:,.0f} crore and net profit of ₹{np_cr:,.0f} crore from corporate filings)."
                     )
 
             # If user asked for price right now / current price, construct a precise factual response
@@ -335,6 +351,7 @@ def ask(request):
         tool_outputs=tool_outputs,
         citations=citations,
         default_answer=answer,
+        conversation_history=conversation_history,
     )
     if llm_warnings:
         warnings.extend(llm_warnings)

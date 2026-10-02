@@ -105,3 +105,85 @@ def test_delete_session_not_found(api_client):
     response = api_client.delete("/api/sessions/non-existent-session-id/")
     assert response.status_code == 404
 
+
+@pytest.mark.django_db
+def test_sequential_queries_preserve_session_context(api_client):
+    """
+    Sends two sequential queries with the same session_id:
+    Query 1: 'What was Reliance FY2024 net profit margin?'
+    Query 2: 'And TCS?'
+    Asserts the second response correctly understands the context and returns TCS's margin.
+    """
+    session_id = "test-sequential-context-session"
+
+    # Turn 1: Discuss Reliance margin
+    resp1 = api_client.post(
+        "/api/ask/",
+        data={
+            "question": "What was Reliance FY2024 net profit margin?",
+            "session_id": session_id,
+        },
+        format="json",
+    )
+    assert resp1.status_code == 200
+    data1 = resp1.json()
+    assert not data1["refused"]
+    assert "7.88" in data1["answer"] or "7.89" in data1["answer"] or "RELIANCE" in data1["answer"].upper()
+
+    # Turn 2: Follow-up question relying on previous context ("And TCS?")
+    resp2 = api_client.post(
+        "/api/ask/",
+        data={
+            "question": "And TCS?",
+            "session_id": session_id,
+        },
+        format="json",
+    )
+    assert resp2.status_code == 200
+    data2 = resp2.json()
+    assert not data2["refused"]
+
+    # Assert response understands context: mentions TCS and margin / 19.59%
+    answer_lower = data2["answer"].lower()
+    assert "tcs" in answer_lower
+    assert "margin" in answer_lower or "19.59" in data2["answer"]
+
+    # Assert tool outputs executed deterministic tool for TCS
+    tool_names = [t["tool_name"] for t in data2.get("tool_outputs", [])]
+    assert "financial_calculator" in tool_names or "fundamentals_lookup" in tool_names
+
+    # Assert MySQL message history contains 4 ordered messages
+    messages = list(Message.objects.filter(session__session_id=session_id).order_by("created_at"))
+    assert len(messages) == 4
+    assert messages[0].role == "user"
+    assert "Reliance" in messages[0].content
+    assert messages[1].role == "assistant"
+    assert messages[2].role == "user"
+    assert "And TCS?" in messages[2].content
+    assert messages[3].role == "assistant"
+
+
+def test_conversation_history_passed_to_gemini_system_prompt():
+    """Unit test: verify conversation_history is injected into systemInstruction for Gemini."""
+    import os
+    from unittest.mock import patch
+    from agent.llm import synthesize_research_answer
+
+    history = "User: What is Reliance's margin?\nAssistant: It was 20%.\nUser: And TCS?"
+    with patch("agent.llm._call_gemini_api", return_value=("Mock contextual answer", 42)) as mock_gemini:
+        with patch.dict(os.environ, {"GEMINI_API_KEY": "dummy_key_for_test"}):
+            synthesize_research_answer(
+                question="And TCS?",
+                tool_outputs=[],
+                citations=[],
+                default_answer="Default",
+                conversation_history=history,
+            )
+            assert mock_gemini.called
+            _, kwargs = mock_gemini.call_args
+            passed_system_prompt = kwargs.get("system_prompt", "")
+            assert "User: What is Reliance's margin?" in passed_system_prompt
+            assert "Assistant: It was 20%." in passed_system_prompt
+            assert "User: And TCS?" in passed_system_prompt
+
+
