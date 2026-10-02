@@ -18,6 +18,26 @@ def _utc_now_iso() -> str:
 
 def calculate_math(question: str) -> tuple[float | None, dict[str, Any] | None]:
     """Deterministically extracts numbers and calculates financial metrics."""
+    # Broad operand extraction for net profit margin (operand-first routing)
+    rev_match = re.search(r"(?:revenue|turnover|sales)[^\d]{0,20}([\d,\.]+)", question, re.IGNORECASE)
+    profit_match = re.search(r"(?:net profit|profit|net income|earnings)[^\d]{0,20}([\d,\.]+)", question, re.IGNORECASE)
+    if rev_match and profit_match:
+        try:
+            rev_str = rev_match.group(1).rstrip(".,").replace(",", "")
+            profit_str = profit_match.group(1).rstrip(".,").replace(",", "")
+            rev = float(rev_str)
+            np = float(profit_str)
+            if rev > 0:
+                val = round((np / rev) * 100, 2)
+                return val, {
+                    "formula": "(net_profit / revenue) * 100",
+                    "net_profit": np,
+                    "revenue": rev,
+                    "result_percent": val,
+                }
+        except (ValueError, TypeError, ZeroDivisionError):
+            pass
+
     # 1. Net profit margin: (net_profit / revenue) * 100
     margin_match = re.search(
         r"net\s+profit\s+(?:is\s+)?(\d+(?:\.\d+)?).*?revenue\s+(?:is\s+)?(\d+(?:\.\d+)?)",
@@ -99,6 +119,37 @@ def route_and_execute(question: str, conversation_history: str = "") -> tuple[st
     warnings: list[str] = []
     timestamp = _utc_now_iso()
     lower_q = question.lower()
+
+    # Broad operand extraction before any fundamentals routing (operand-first routing)
+    rev_match = re.search(r"(?:revenue|turnover|sales)[^\d]{0,20}([\d,\.]+)", question, re.IGNORECASE)
+    profit_match = re.search(r"(?:net profit|profit|net income|earnings)[^\d]{0,20}([\d,\.]+)", question, re.IGNORECASE)
+    if rev_match and profit_match:
+        try:
+            rev_val = float(rev_match.group(1).rstrip(".,").replace(",", ""))
+            profit_val = float(profit_match.group(1).rstrip(".,").replace(",", ""))
+            if rev_val > 0:
+                margin_val = round((profit_val / rev_val) * 100, 2)
+                calc_payload = {
+                    "formula": "(net_profit / revenue) * 100",
+                    "net_profit": profit_val,
+                    "revenue": rev_val,
+                    "result_percent": margin_val,
+                }
+                tool_outputs.append(
+                    ToolOutput(
+                        tool_name="financial_calculator",
+                        input={"formula": "(net_profit / revenue) * 100", "net_profit": profit_val, "revenue": rev_val},
+                        output=calc_payload,
+                        source="deterministic_calculator_v1",
+                        timestamp=timestamp,
+                    )
+                )
+                rev_fmt = f"{int(rev_val):,}" if rev_val.is_integer() else f"{rev_val:,.2f}"
+                np_fmt = f"{int(profit_val):,}" if profit_val.is_integer() else f"{profit_val:,.2f}"
+                answer = f"The calculated net profit margin is {margin_val}% based on revenue of {rev_fmt} and profit of {np_fmt}."
+                return answer, tool_outputs, citations, warnings
+        except (ValueError, TypeError, ZeroDivisionError):
+            pass
 
     # Route 1: Calculator
     calc_result, calc_details = calculate_math(question)

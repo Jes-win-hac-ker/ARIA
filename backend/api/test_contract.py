@@ -114,6 +114,34 @@ def test_sequential_queries_preserve_session_context(api_client):
     Query 2: 'And TCS?'
     Asserts the second response correctly understands the context and returns TCS's margin.
     """
+    from decimal import Decimal
+    from api.models import CompanyFundamental
+
+    CompanyFundamental.objects.update_or_create(
+        tckr_symb="RELIANCE",
+        fiscal_year="FY2025-26",
+        defaults={
+            "company_name": "Reliance Industries Limited",
+            "revenue_cr": Decimal("1002500.00"),
+            "net_profit_cr": Decimal("79020.00"),
+            "operating_margin_pct": Decimal("17.80"),
+            "as_of_date": "2026-03-31",
+            "source": "Reliance Audited Results",
+        },
+    )
+    CompanyFundamental.objects.update_or_create(
+        tckr_symb="TCS",
+        fiscal_year="FY2025-26",
+        defaults={
+            "company_name": "Tata Consultancy Services Limited",
+            "revenue_cr": Decimal("245000.00"),
+            "net_profit_cr": Decimal("48000.00"),
+            "operating_margin_pct": Decimal("25.50"),
+            "as_of_date": "2026-03-31",
+            "source": "TCS Annual Report",
+        },
+    )
+
     session_id = "test-sequential-context-session"
 
     # Turn 1: Discuss Reliance margin
