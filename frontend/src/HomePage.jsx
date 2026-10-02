@@ -1,60 +1,15 @@
 import { useEffect, useState } from 'react'
-import { documentUrl } from './api/client.js'
-import { ApiStatusDot, ThemeToggle } from './shared/ARIAUI.jsx'
+import { documentUrl, getComparisonData, getMarketMovers } from './api/client.js'
+import { ApiStatusDot, CompanyLogo, ThemeToggle } from './shared/ARIAUI.jsx'
 import CompanyComparisonView from './features/companies/CompanyComparisonView.jsx'
-
-const companies = [
-    {
-        name: 'Reliance Industries',
-        ticker: 'RELIANCE',
-        initial: 'R',
-        logo: '/company-logos/reliance-industries.png',
-        trend: 'up',
-    },
-    {
-        name: 'TCS',
-        ticker: 'TCS',
-        initial: 'T',
-        logo: '/company-logos/tcs.svg',
-        trend: 'down',
-    },
-    {
-        name: 'HDFC Bank',
-        ticker: 'HDFCBANK',
-        initial: 'H',
-        logo: '/company-logos/hdfc-bank.svg',
-        trend: 'up',
-    },
-    {
-        name: 'Infosys',
-        ticker: 'INFY',
-        initial: 'In',
-        logo: '/company-logos/infosys.svg',
-        trend: 'up',
-    },
-    {
-        name: 'ICICI Bank',
-        ticker: 'ICICIBANK',
-        initial: 'IC',
-        logo: '/company-logos/icici-bank.svg',
-        trend: 'up',
-    },
-]
-
-const relianceDocuments = [
-    { title: 'Audited Financial Results FY2025-26', filename: 'rag_1.pdf', kind: 'results', period: 'FY26', type: 'PDF', pages: 37, timestamp: '2026-04-24T18:00:00+05:30' },
-    { title: 'Financial Results Presentation FY2025-26', filename: 'RAG_3.pdf', kind: 'results', period: 'FY26', type: 'PDF', pages: 72, timestamp: '2026-04-24T17:30:00+05:30' },
-    { title: 'Earnings Call Q4 FY2025-26', filename: 'RAG_2.pdf', kind: 'earnings', period: 'FY26', type: 'Transcript', pages: 31, timestamp: '2026-04-24T20:30:00+05:30' },
-    { title: 'Annual Report FY2023-24', filename: 'RIL_Annual_Report_FY24.pdf', kind: 'annual', period: 'FY24', type: 'PDF', pages: 181, timestamp: '2024-08-07T12:00:00+05:30' },
-    { title: 'Earnings Call Q4 FY2023-24', filename: 'RIL_Concall_Transcript_Q4_FY24.pdf', kind: 'earnings', period: 'FY24', type: 'Transcript', pages: 23, timestamp: '2024-04-22T20:30:00+05:30' },
-    { title: 'Earnings Call Q3 FY2023-24', filename: 'RIL_Concall_Transcript_Q3_FY24.pdf', kind: 'earnings', period: 'FY24', type: 'Transcript', pages: 23, timestamp: '2024-01-19T20:30:00+05:30' },
-    { title: 'Annual Report FY2022-23', filename: 'RIL_Annual_Report_FY23.pdf', kind: 'annual', period: 'FY23', type: 'PDF', pages: 320, timestamp: '2023-08-05T12:00:00+05:30' },
-    { title: 'Earnings Call Q4 FY2022-23', filename: 'RIL_Concall_Transcript_Q4_FY23.pdf', kind: 'earnings', period: 'FY23', type: 'Transcript', pages: 19, timestamp: '2023-04-21T20:30:00+05:30' },
-]
-
-const documentsByTicker = {
-    RELIANCE: relianceDocuments,
-}
+import {
+    companies,
+    documentsByTicker,
+    fiscalYearToReportingPeriod,
+    metricDefinitions,
+    reportingPeriodSortValue,
+    toFiscalYear,
+} from './features/companies/companyData.js'
 
 function CompanyNavigationPanel({ onClose, onNavigate }) {
     return (
@@ -108,18 +63,14 @@ function TrendLine({ direction }) {
     )
 }
 
-function CompanyLogo({ company, detail = false }) {
-    const [failed, setFailed] = useState(false)
-
+function SourceStatus({ quote }) {
+    const available = quote?.found && quote.price !== null && quote.price !== undefined
     return (
-        <span className={detail ? 'company-detail-logo' : 'company-initial'} aria-hidden="true">
-            {failed ? company.initial : (
-                <img
-                    src={company.logo}
-                    alt=""
-                    onError={() => setFailed(true)}
-                />
-            )}
+        <span
+            className={`company-source-status ${available ? 'available' : 'unavailable'}`}
+            title={available ? `${quote.source} · Trade date ${quote.trade_date}` : 'No stored quote data available'}
+        >
+            <span className="company-source-status-dot" aria-hidden="true" />
         </span>
     )
 }
@@ -140,6 +91,8 @@ export default function HomePage({
     const [selectedCompany, setSelectedCompany] = useState(null)
     const [activeCompanyTab, setActiveCompanyTab] = useState('overview')
     const [reportingPeriod, setReportingPeriod] = useState('')
+    const [fundamentals, setFundamentals] = useState([])
+    const [marketMovers, setMarketMovers] = useState([])
     const [menuOpen, setMenuOpen] = useState(false)
     const [navigationOpen, setNavigationOpen] = useState(false)
 
@@ -154,6 +107,37 @@ export default function HomePage({
         window.addEventListener('keydown', closeOnEscape)
         return () => window.removeEventListener('keydown', closeOnEscape)
     }, [menuOpen, navigationOpen])
+
+    useEffect(() => {
+        let cancelled = false
+        getComparisonData()
+            .then((data) => {
+                if (!cancelled) {
+                    const records = Array.isArray(data.records) ? data.records : []
+                    setFundamentals(records)
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setFundamentals([])
+            })
+        return () => {
+            cancelled = true
+        }
+    }, [])
+
+    useEffect(() => {
+        let cancelled = false
+        getMarketMovers()
+            .then((data) => {
+                if (!cancelled) setMarketMovers(Array.isArray(data.movers) ? data.movers : [])
+            })
+            .catch(() => {
+                if (!cancelled) setMarketMovers([])
+            })
+        return () => {
+            cancelled = true
+        }
+    }, [])
 
     function navigateFromMenu(destination) {
         setMenuOpen(false)
@@ -208,13 +192,23 @@ export default function HomePage({
             .toLowerCase()
             .includes(search.toLowerCase())
     )
+    const quoteByTicker = new Map(marketMovers.map((quote) => [quote.ticker, quote]))
+    const latestDocuments = Object.entries(documentsByTicker)
+        .flatMap(([ticker, documents]) => documents.map((document) => ({ ticker, ...document })))
+        .sort((left, right) => right.timestamp.localeCompare(left.timestamp))
+        .slice(0, 3)
 
     function selectCompany(company) {
         const documents = documentsByTicker[company.ticker] || []
-        const periods = [...new Set(documents.map((document) => document.period))]
+        const documentPeriods = documents.map((document) => document.period)
+        const dataPeriods = fundamentals
+            .filter((record) => record.ticker === company.ticker)
+            .map((record) => fiscalYearToReportingPeriod(record.fiscal_year))
+        const periods = [...new Set([...documentPeriods, ...dataPeriods])]
+            .sort((left, right) => reportingPeriodSortValue(right) - reportingPeriodSortValue(left))
         setSelectedCompany(company)
         setActiveCompanyTab('overview')
-        setReportingPeriod(periods[0] || '')
+        setReportingPeriod(periods[0] || 'FY26')
     }
 
     function backToSearch() {
@@ -236,11 +230,21 @@ export default function HomePage({
     if (selectedCompany) {
         const companyDocuments = documentsByTicker[selectedCompany.ticker] || []
         const followed = followedCompanies.some((company) => company.ticker === selectedCompany.ticker)
+        const fiscalYear = toFiscalYear(reportingPeriod)
+        const fundamental = fundamentals.find((record) => (
+            record.ticker === selectedCompany.ticker && record.fiscal_year === fiscalYear
+        ))
         const visibleDocuments = activeCompanyTab === 'annual'
             ? companyDocuments.filter((document) => document.kind === 'annual')
             : activeCompanyTab === 'earnings'
                 ? companyDocuments.filter((document) => document.kind === 'earnings')
                 : companyDocuments
+        const availablePeriods = [...new Set([
+            ...companyDocuments.map((document) => document.period),
+            ...fundamentals
+                .filter((record) => record.ticker === selectedCompany.ticker)
+                .map((record) => fiscalYearToReportingPeriod(record.fiscal_year)),
+        ])].sort((left, right) => reportingPeriodSortValue(right) - reportingPeriodSortValue(left))
 
         return (
             <main className={`home-page theme-${theme}`}>
@@ -300,10 +304,10 @@ export default function HomePage({
                                     id="reporting-period"
                                     value={reportingPeriod}
                                     onChange={(event) => setReportingPeriod(event.target.value)}
-                                    disabled={!companyDocuments.length}
+                                    disabled={!availablePeriods.length}
                                 >
-                                    {companyDocuments.length ? (
-                                        [...new Set(companyDocuments.map((document) => document.period))].map((period, index) => (
+                                    {availablePeriods.length ? (
+                                        availablePeriods.map((period, index) => (
                                             <option key={period} value={period}>{period}{index === 0 ? ' (Latest available)' : ''}</option>
                                         ))
                                     ) : <option value="">Unavailable</option>}
@@ -311,13 +315,21 @@ export default function HomePage({
                             </div>
 
                             <div className="company-metrics" aria-label={`Financial metrics for ${reportingPeriod || 'selected period'}`}>
-                                {['Revenue', 'Net Profit', 'EPS'].map((metric) => (
+                                {metricDefinitions.map((metric) => {
+                                    const value = fundamental?.[metric.field]
+                                    const hasValue = value !== null && value !== undefined && Number.isFinite(Number(value))
+                                    return (
                                     <article className="company-metric" key={metric}>
-                                        <h2>{metric}</h2>
-                                        <strong>Unavailable</strong>
-                                        <span>No verified metric summary for {reportingPeriod || 'this company'}</span>
+                                        <h2>{metric.label}</h2>
+                                        <strong>{hasValue ? metric.format(Number(value)) : 'Unavailable'}</strong>
+                                        <span>
+                                            {hasValue
+                                                ? `Source: ${fundamental.source} · As of ${fundamental.as_of_date}`
+                                                : `No verified metric summary for ${reportingPeriod || 'this company'}`}
+                                        </span>
                                     </article>
-                                ))}
+                                    )
+                                })}
                             </div>
                             <p className="company-metric-note">Use a cited filing or ask ARIA to retrieve the reported value. No unsourced figures are shown here.</p>
 
@@ -380,7 +392,7 @@ export default function HomePage({
             <header className="home-nav">
                 <NavigationMenu />
 
-                <div className="home-nav-title">Search</div>
+                <div className="home-nav-title">ARIA</div>
 
                 <ThemeToggle theme={theme} onToggle={onToggleTheme} />
                 <ApiStatusDot className="home-api-status" health={apiHealth} />
@@ -388,14 +400,13 @@ export default function HomePage({
 
             <section className="home-content">
 
-                <div className="home-heading">
-                    <h1>Find a Company</h1>
-                </div>
+                <h1 className="visually-hidden">Find a Company</h1>
 
                 <div className="home-search-box">
                     <input
                         type="text"
                         aria-label="Search companies by name or ticker"
+                        placeholder="Find a Company"
                         value={search}
                         onChange={(event) => setSearch(event.target.value)}
                     />
@@ -443,7 +454,7 @@ export default function HomePage({
                             </div>
 
                             <div className="company-card-right">
-                                <TrendLine direction={company.trend} />
+                                <SourceStatus quote={quoteByTicker.get(company.ticker)} />
                                 <span className="company-arrow">›</span>
                             </div>
                         </button>
@@ -455,6 +466,75 @@ export default function HomePage({
                         </div>
                     )}
                 </div>
+
+                <section className="research-snapshot" aria-labelledby="research-snapshot-heading">
+                    <div className="research-snapshot-heading">
+                        <div>
+                            <span className="popular-label">SOURCE-BACKED OVERVIEW</span>
+                            <h2 id="research-snapshot-heading">Research snapshot</h2>
+                        </div>
+                        <span className="research-snapshot-status">
+                            {marketMovers.length ? 'Stored data available' : 'Waiting for stored data'}
+                        </span>
+                    </div>
+
+                    <div className="research-snapshot-grid">
+                        <section className="snapshot-panel snapshot-market" aria-labelledby="snapshot-market-heading">
+                            <div className="snapshot-panel-heading">
+                                <h3 id="snapshot-market-heading">Market snapshot</h3>
+                                <span>NSE closing data</span>
+                            </div>
+                            <div className="snapshot-market-list">
+                                {companies.slice(0, 4).map((company) => {
+                                    const quote = quoteByTicker.get(company.ticker)
+                                    const hasPrice = quote?.found && quote.price !== null && quote.price !== undefined
+                                    return (
+                                        <div className="snapshot-market-row" key={company.ticker}>
+                                            <span>{company.ticker}</span>
+                                            <strong>{hasPrice ? `₹${Number(quote.price).toLocaleString('en-IN', { maximumFractionDigits: 2 })}` : 'Unavailable'}</strong>
+                                            <em className={quote?.change_pct < 0 ? 'negative' : 'positive'}>
+                                                {hasPrice && quote.change_pct !== null ? `${Number(quote.change_pct) >= 0 ? '+' : ''}${quote.change_pct}%` : '—'}
+                                            </em>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                            <p className="snapshot-footnote">
+                                {marketMovers[0]?.trade_date
+                                    ? `Trade date ${marketMovers[0].trade_date} · Historical/stale, not live.`
+                                    : 'No stored quote data is currently available.'}
+                            </p>
+                        </section>
+
+                        <section className="snapshot-panel snapshot-documents" aria-labelledby="snapshot-documents-heading">
+                            <div className="snapshot-panel-heading">
+                                <h3 id="snapshot-documents-heading">Recent indexed sources</h3>
+                                <span>{latestDocuments.length} shown</span>
+                            </div>
+                            {latestDocuments.length ? (
+                                <div className="snapshot-document-list">
+                                    {latestDocuments.map((document) => (
+                                        <a className="snapshot-document-row" key={document.filename} href={documentUrl(document.filename)} target="_blank" rel="noreferrer">
+                                            <span className="snapshot-document-kind">{document.kind === 'earnings' ? 'CALL' : 'FILING'}</span>
+                                            <span>
+                                                <strong>{document.title}</strong>
+                                                <small>{document.ticker} · {document.type}</small>
+                                            </span>
+                                            <span aria-hidden="true">→</span>
+                                        </a>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="snapshot-empty">No indexed documents are available yet.</p>
+                            )}
+                        </section>
+                    </div>
+
+                    <div className="snapshot-actions">
+                        <button type="button" onClick={() => onNavigate('research')}>Open research workspace <span aria-hidden="true">→</span></button>
+                        <button type="button" onClick={() => onNavigate('library')}>View followed companies <span aria-hidden="true">→</span></button>
+                    </div>
+                </section>
 
             </section>
             {navigationOpen && <CompanyNavigationPanel onClose={() => setNavigationOpen(false)} onNavigate={navigate} />}

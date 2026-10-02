@@ -117,7 +117,11 @@ export default function ResearchWorkspace({
           {loading && (
             <div className="loading-message" role="status">
               <span className="loading-spinner" aria-hidden="true" />
-              <div><strong>Retrieving and reviewing sources</strong><span>Waiting for the validated research response.</span></div>
+              <div className="loading-copy">
+                <strong>Retrieving and reviewing sources</strong>
+                <span>ARIA is searching permitted filings and validating the response.</span>
+                <span className="loading-activity" aria-hidden="true"><span /></span>
+              </div>
             </div>
           )}
           {error && (

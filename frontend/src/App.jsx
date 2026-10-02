@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { askQuestion, healthCheck, mockMode } from './api/client.js'
 import { getSessionId } from './utils/session.js'
+import { readFollowedCompanies, readSavedReports, readStoredTheme, writeStoredTheme, writeStoredValue } from './utils/storage.js'
 import { ApiStatusDot, BrandSymbol, Icon, ThemeToggle } from './shared/ARIAUI.jsx'
 import { LandingPage, LoginPage } from './features/auth/AuthFlow.jsx'
 import FollowedCompaniesView from './features/companies/FollowedCompaniesView.jsx'
@@ -8,46 +9,6 @@ import ResearchHistoryView from './features/research/ResearchHistoryView.jsx'
 import ResearchWorkspace from './features/research/ResearchWorkspace.jsx'
 import SettingsDialog from './features/settings/SettingsDialog.jsx'
 import HomePage from './HomePage.jsx'
-
-function readStoredTheme() {
-    try {
-        return window.localStorage.getItem('aria-theme') === 'dark' ? 'dark' : 'light'
-    } catch {
-        return 'light'
-    }
-}
-
-function readFollowedCompanies() {
-    try {
-        const stored = JSON.parse(window.localStorage.getItem('aria-followed-companies') || '[]')
-        if (!Array.isArray(stored)) return []
-        return stored.filter(
-            (company) =>
-                company &&
-                typeof company.name === 'string' &&
-                typeof company.ticker === 'string',
-        )
-    } catch {
-        return []
-    }
-}
-
-function readSavedReports() {
-    try {
-        const stored = JSON.parse(window.localStorage.getItem('aria-saved-reports') || '[]')
-        if (!Array.isArray(stored)) return []
-        return stored.filter(
-            (report) =>
-                report &&
-                typeof report.filename === 'string' &&
-                typeof report.companyName === 'string' &&
-                typeof report.title === 'string' &&
-                typeof report.savedAt === 'string',
-        )
-    } catch {
-        return []
-    }
-}
 
 export default function App() {
     const [entryPage, setEntryPage] = useState('login')
@@ -83,7 +44,7 @@ export default function App() {
 
     useEffect(() => {
         try {
-            window.localStorage.setItem('aria-theme', theme)
+            writeStoredTheme(theme)
         } catch {
             setSettingsNotice('Theme preference could not be saved in this browser.')
         }
@@ -95,7 +56,7 @@ export default function App() {
 
     useEffect(() => {
         try {
-            window.localStorage.setItem('aria-followed-companies', JSON.stringify(followedCompanies))
+            writeStoredValue('aria-followed-companies', followedCompanies)
         } catch {
             setSettingsNotice('Followed companies could not be saved in this browser.')
         }
@@ -103,7 +64,7 @@ export default function App() {
 
     useEffect(() => {
         try {
-            window.localStorage.setItem('aria-saved-reports', JSON.stringify(savedReports))
+            writeStoredValue('aria-saved-reports', savedReports)
         } catch {
             setSettingsNotice('Saved reports could not be stored in this browser.')
         }

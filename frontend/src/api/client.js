@@ -27,6 +27,15 @@ export async function getComparisonData() {
   return response.json()
 }
 
+export async function getMarketMovers() {
+  const response = await fetch(`${API_BASE}/api/market-movers/`)
+  if (!response.ok) {
+    throw new Error(`Market data request failed with HTTP ${response.status}`)
+  }
+
+  return response.json()
+}
+
 export async function askQuestion(question) {
   if (mockMode) {
     return {

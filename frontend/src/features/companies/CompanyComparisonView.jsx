@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getComparisonData } from '../../api/client.js'
+import { fiscalYears } from './companyData.js'
 
-const fiscalYears = ['FY2025-26', 'FY2024-25', 'FY2023-24', 'FY2022-23']
 const metricGroups = {
     keyMetrics: [
         { label: 'Revenue', field: 'revenue_cr', format: 'crore' },
