@@ -70,6 +70,9 @@ if DB_ENGINE == 'sqlite':
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / env('DJANGO_DB_NAME', 'aria.sqlite3'),
+            'OPTIONS': {
+                'timeout': 30,  # Prevent OperationalError: database is locked under concurrency
+            },
         }
     }
 else:

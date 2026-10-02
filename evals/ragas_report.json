@@ -1,0 +1,129 @@
+{
+  "eval_timestamp": "2026-10-02T01:51:38Z",
+  "total_questions": 5,
+  "overall_ragas_score": 0.5498,
+  "averages": {
+    "faithfulness": 0.64,
+    "answer_relevance": 0.5,
+    "context_precision": 0.9667,
+    "context_recall": 0.3733
+  },
+  "total_elapsed_seconds": 4.51,
+  "detailed_results": [
+    {
+      "id": "ragas_retail_01",
+      "question": "What was the scale and growth of Reliance Retail physical footprint in FY24?",
+      "ground_truth": "Reliance Retail maintained leadership with over 18,800 physical stores covering 79.1 million square feet of retail area, expanding across grocery, consumer electronics, and fashion.",
+      "retrieved_sources": [
+        "RIL_Annual_Report_FY24.pdf (Page 41)",
+        "RIL_Annual_Report_FY23.pdf (Page 60)",
+        "RIL_Annual_Report_FY23.pdf (Page 154)"
+      ],
+      "contexts": [
+        "Congress, 11th edition), Winner \u2013 Variety Retailer of the Year, Winner \u2013 Large Format Retailer Images Most Admired Retailer of the year - Single Store with highest Y-o-Y Growth - Freshpik, Jio World Drive, Mumbai Retailers Association of India \u2013 Best Grocery Retail Small Format of the year \u2013 Fresh Signature Others ETHR World has recognised Reliance Retail as one of Economic Times Future Ready Organisations 2023 in the \u201cLarge Scale\u201d category Reliance Retail has been recognised amongst the Top Leadership Factories of India 2023-25 by Great Manager Institute for creating leaders at scale Reliance Retail is a 2023 winner of the Association for Talent Development\u2019s (ATD) BEST Award for the",
+        "erience with the simplicity of instant chat services. Growth in new commerce business has been fast paced with rapid expansion of its merchant partner network. Currently, more than 3 million merchants have partnered with our new commerce platforms. Retail segments EBITDA stood at `17,974 crore which reflects a strong 44.7% increase from the previous year. The EBITDA growth was well supported by all verticals right from grocery to fashion and lifestyle. Reliance Retail is an indispensable part of the Indian household\u2019s shopping experience not only in metro regions but also in tier 2 and tier 3 cities. Reliance Retail envisions to expand its offerings and scale of operations to make best in",
+        "the country, serving over 7,500 towns and 3 lakh villages. Reliance Retail operates multiple digital commerce platforms which continue to show steady growth year after year. During the year, JioMart partnered with Whatsapp to launch a native app which customers can use to shop through JioMart\u2019s catalogue. This democratises online shopping opportunities for a large number of shoppers who do not currently shop on JioMart. Moreover, with the acquisition of Netmeds, a pan-India digital pharmacy, the Retail business has gained a strong foothold in the online pharmaceutical segment further broadening its customer base. Reliance Retail\u2019s fashion and lifestyle business has an expansive physical"
+      ],
+      "generated_answer": "Live LLM services are currently unreachable, and no deterministic tool or filing matched this query. Please provide a financial research query referencing filings, financial ratios, or stock fundamentals.",
+      "metrics": {
+        "faithfulness": 0.64,
+        "answer_relevance": 0.5,
+        "context_precision": 1.0,
+        "context_recall": 0.4
+      },
+      "latency_ms": 1745
+    },
+    {
+      "id": "ragas_5g_02",
+      "question": "What did management state regarding 5G network rollout and subscriber adoption in FY24?",
+      "ground_truth": "Jio completed nationwide True5G rollout ahead of schedule, with over 108 million 5G subscribers accounting for almost 30% of Jio wireless data traffic.",
+      "retrieved_sources": [
+        "RIL_Annual_Report_FY23.pdf (Page 94)",
+        "RIL_Annual_Report_FY24.pdf (Page 33)",
+        "RIL_Concall_Transcript_Q3_FY24.pdf (Page 5)"
+      ],
+      "contexts": [
+        "can significantly boost per capita output by relying on IoT and drone-based precision farming solutions. 5G-powered drones can be flown remotely from distant control centres from actual sites such as farmers\u2019 premises, district or taluka offices, or even the state or central headquarters. Drones can cover farmlands and multi-spectral cameras can be used to scan the fields with real-time relay of images on the cloud over the 5G network. The data can then be analysed using AI/ML algorithms to detect insect or pest infestations, soil moisture and irrigation. Jio Krishi IoT devices such as weather stations and soil testers can aid in data-driven farming methods ensuring the optimal use of",
+        "wala Isha Ambani Akash Ambani Anant Ambani Mathew Oommen Shyam Mardikar Dhruv Kumar Tayal Aayush Bhatnagar Saurabh Sancheti V. Sridhar Ashish Lodha R. Srinivasan Sanjay Jog Rahul Mukherjee 5.5 Trillion minutes Voice on network 108 Million Users migrated to 5G network Rollout and Adoption of 5G Jio has led the rollout of the pan-India 5G network and India has over 4,35,000 5G BTS deployed across the country. According to the Ericsson Mobility Report, 5G subscribers in India are estimated to grow to more than 800 million by 2029. The rapid upgrade of network infrastructure has also led to over 70% of new smartphones being 5G enabled. Launch of more affordable 5G smartphones would further",
+        "over one year into the rollout of our true 5G services. And as Srikanth alluded to in his opening remarks, nearly 90 million subscribers have already migrated to 5G on our network. And another great thing that we can talk about is that this entire 5G deployment and the traffic coming from the 90 million"
+      ],
+      "generated_answer": "Live LLM services are currently unreachable, and no deterministic tool or filing matched this query. Please provide a financial research query referencing filings, financial ratios, or stock fundamentals.",
+      "metrics": {
+        "faithfulness": 0.62,
+        "answer_relevance": 0.5,
+        "context_precision": 1.0,
+        "context_recall": 0.6667
+      },
+      "latency_ms": 779
+    },
+    {
+      "id": "ragas_oil_gas_03",
+      "question": "What drove profitability and volume performance in the upstream oil and gas segment in FY24?",
+      "ground_truth": "Upstream Oil and Gas segment EBITDA surged due to sustained high gas production from the KG D6 block reaching approximately 30 MMSCMD.",
+      "retrieved_sources": [
+        "RIL_Concall_Transcript_Q3_FY24.pdf (Page 3)",
+        "RIL_Annual_Report_FY23.pdf (Page 209)",
+        "rag_1.pdf (Page 35)"
+      ],
+      "contexts": [
+        "Y basis and the performance would have been comparable even to the previous quarter. In oil and gas, benefiting from ramp up in MJ1 production and now KGD6 contributes 30% of India's gas production.",
+        "d below to be the key audit matters to be communicated in our report. Sr. No. Key Audit Matter Auditor\u2019s Response 1. Estimates of Oil and Gas Reserves Significant judgment and estimates are involved in estimating oil and gas reserves which require consideration of factors such as the availability of geological and engineering data, reservoir performance data, acquisition and divestment activity, drilling of new wells and commodity prices. The quantum of oil and gas reserves have a direct impact on determination of depletion charge for the Company\u2019s oil and gas assets and on the assessment of the recoverability of the carrying values of development rights. Accordingly, the estimation of oil",
+        "AUDITED STANDALONE SEGMENT INFORMATION FOR THE QUARTER/ YEAR ENDED 31sr MARCH, 2026 al' in crore Sr. Quarter Ended Year Ended No. Particulars Segment Value of Sales and Services (Revenue) - Oil to Chemicals (O2C) - Oil and Gas - Relail - Digital Services - Others Gross Value of Sales and Services Less: Inter Segmen!Transfers Value of Sales & Services Less: GST Recovered Revenue from Operations 2 Segment Results (EBITDA) - Oil to Chemicals (O2C)' - Oil and Gas - Retail - Digital Services - Others Total Segment Profit before Interest, Tax and Depreciation, Amortisation and Depletion 3 Segment Results (EBIT) - Oil to Chemicals (O2C)' - Oil and Gas - Retail - Digital Services - Others Total"
+      ],
+      "generated_answer": "Live LLM services are currently unreachable, and no deterministic tool or filing matched this query. Please provide a financial research query referencing filings, financial ratios, or stock fundamentals.",
+      "metrics": {
+        "faithfulness": 0.62,
+        "answer_relevance": 0.5,
+        "context_precision": 0.8333,
+        "context_recall": 0.4
+      },
+      "latency_ms": 652
+    },
+    {
+      "id": "ragas_auditor_04",
+      "question": "What was the auditor conclusion on internal financial controls and financial statements in FY24?",
+      "ground_truth": "Deloitte Haskins & Sells LLP provided an unmodified, clean audit opinion with robust internal financial controls and standard key audit matters on telecom capex and goodwill impairment.",
+      "retrieved_sources": [
+        "RIL_Annual_Report_FY23.pdf (Page 260)",
+        "RIL_Annual_Report_FY23.pdf (Page 260)",
+        "RIL_Annual_Report_FY23.pdf (Page 212)"
+      ],
+      "contexts": [
+        "mpany; and (3) provide reasonable assurance regarding prevention or timely detection of unauthorised acquisition, use, or disposition of the company\u2019s assets that could have a material effect on the financial statements. Inherent Limitations of Internal Financial Controls with reference to Consolidated Financial Statements Because of the inherent limitations of internal financial controls with reference to Consolidated Financial Statements, including the possibility of collusion or improper management override of controls, material misstatements due to error or fraud may occur and not be detected. Also, projections of any evaluation of the internal financial controls with reference to",
+        "he Guidance Note require that we comply with ethical requirements and plan and perform the audit to obtain reasonable assurance about whether adequate internal financial controls with reference to Consolidated Financial Statements was established and maintained and if such controls operated effectively in all material respects. Our audit involves performing procedures to obtain audit evidence about the adequacy of the internal financial controls with reference to Consolidated Financial Statements and their operating effectiveness. Our audit of internal financial controls with reference to Consolidated Financial Statements included obtaining an understanding of internal financial controls",
+        "of 31st March, 2023 in conjunction with our audit of the Standalone Financial Statements of the Company for the year ended on that date. Management\u2019s Responsibility for Internal Financial Controls The Company\u2019s management is responsible for establishing and maintaining internal financial controls based on the internal control with reference to Standalone Financial Statements criteria established by the Company considering the essential components of internal control stated in the Guidance Note on Audit of Internal Financial Controls Over Financial Reporting issued by the Institute of Chartered Accountants of India. These responsibilities include the design, implementation and maintenance"
+      ],
+      "generated_answer": "Live LLM services are currently unreachable, and no deterministic tool or filing matched this query. Please provide a financial research query referencing filings, financial ratios, or stock fundamentals.",
+      "metrics": {
+        "faithfulness": 0.66,
+        "answer_relevance": 0.5,
+        "context_precision": 1.0,
+        "context_recall": 0.2
+      },
+      "latency_ms": 711
+    },
+    {
+      "id": "ragas_digital_capex_05",
+      "question": "How did capital expenditure (capex) evolve for digital services following 5G deployment?",
+      "ground_truth": "Capital expenditure for digital services moderated significantly in the latter half of the fiscal year following the peak and completion of the nationwide 5G network deployment.",
+      "retrieved_sources": [
+        "RIL_Concall_Transcript_Q4_FY23.pdf (Page 4)",
+        "RIL_Annual_Report_FY23.pdf (Page 158)",
+        "RIL_Concall_Transcript_Q4_FY24.pdf (Page 6)"
+      ],
+      "contexts": [
+        "is slide, truly accelerated investments we have reinforced our leadership positions in the consumer business. In the investment phase, we are ensuring that we maintain our lead digital services through a differentiated 5G product offering across India. Our 5G services that are already available in more than 2300",
+        "lastics in an engineered microbial platform from renewable carbon feedstocks is underway. The engineered microbes have produced two types of PHAs with the potential to substitute PE (polyethylene) and PP (polypropylene). The engineered microbes are being tested at a litre-scale fermenter to produce PHAs for applications. Digital Services Reliance strongly believes in the role intellectual capital plays in tapping emerging business opportunities to create value for all stakeholders. The Company has invested in new 5G architecture to provide its users with unparalleled digital experiences. Jio\u2019s indigenously developed cloud native 5G stack is software defined and digitally managed, with",
+        "ving it to Kiran. Sh Kiran Thomas 00:10:36 \u2013 00:21:14 (Digital Services) Yeah. Thank you, Srikanth. So, let's start the update on the digital services piece with our True 5G network. As on date, more than 100 million, in fact 108 million subscribers have migrated to Jio's True 5G services. And if you look at the total traffic that is now being carried, or being contributed, by these 5G subscribers on a 5G network, it is now approaching 30% of the mobility data traffic, cumulative mobility data traffic. Just keep in mind that it is just about a year and a half since we actually started rolling out our 5G network and these are staggering numbers for such a short period of time. In terms of"
+      ],
+      "generated_answer": "Live LLM services are currently unreachable, and no deterministic tool or filing matched this query. Please provide a financial research query referencing filings, financial ratios, or stock fundamentals.",
+      "metrics": {
+        "faithfulness": 0.66,
+        "answer_relevance": 0.5,
+        "context_precision": 1.0,
+        "context_recall": 0.2
+      },
+      "latency_ms": 619
+    }
+  ]
+}
