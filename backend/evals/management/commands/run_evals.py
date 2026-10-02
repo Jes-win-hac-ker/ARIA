@@ -85,6 +85,10 @@ class Command(BaseCommand):
             expected_tools = item.get("expected_tools", [])
             expected_numeric = item.get("expected_numeric_result")
 
+            # Reset throttle cache for evaluation harness
+            from django.core.cache import cache
+            cache.clear()
+
             # Call /api/ask/
             response = client.post("/api/ask/", data={"question": question_text}, format="json")
             if response.status_code != 200:

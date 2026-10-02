@@ -130,8 +130,22 @@ CORS_ALLOWED_ORIGINS = [
     o.strip() for o in env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001').split(',') if o.strip()
 ]
 
+# --- Cache: In-memory cache for fast, microsecond-overhead rate limiting without external dependencies ---
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'aria-default-cache',
+    }
+}
+
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': ['rest_framework.renderers.JSONRenderer'],
     'DEFAULT_PAGINATION_CLASS': None,
     'UNAUTHENTICATED_USER': None,
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '20/minute',
+    },
 }

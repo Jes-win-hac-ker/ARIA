@@ -215,3 +215,35 @@ def test_conversation_history_passed_to_gemini_system_prompt():
             assert "User: And TCS?" in passed_system_prompt
 
 
+@pytest.mark.django_db
+def test_ask_endpoint_throttled_at_20_per_minute(api_client):
+    """
+    Verifies that /api/ask/ uses AnonRateThrottle set to 20/minute.
+    Sends 20 requests successfully, then asserts the 21st request returns HTTP 429 Too Many Requests.
+    """
+    from django.core.cache import cache
+    cache.clear()
+    try:
+        # First 20 requests within rate limit
+        for i in range(20):
+            resp = api_client.post(
+                "/api/ask/",
+                data={"question": "Should I buy Reliance tomorrow?"},
+                format="json",
+            )
+            assert resp.status_code == 200, f"Request {i+1} failed with status {resp.status_code}"
+
+        # 21st request exceeds rate limit (20/minute)
+        resp21 = api_client.post(
+            "/api/ask/",
+            data={"question": "Should I buy Reliance tomorrow?"},
+            format="json",
+        )
+        assert resp21.status_code == 429
+        assert "detail" in resp21.json()
+        assert "throttled" in resp21.json()["detail"].lower()
+    finally:
+        cache.clear()
+
+
+
