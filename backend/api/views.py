@@ -19,6 +19,8 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
+from rest_framework.views import APIView
 
 from agent.guardrails import (
     STANDARD_REFUSAL_MESSAGE,
@@ -172,234 +174,240 @@ def market_movers(request):
     })
 
 
-@api_view(['POST'])
-@permission_classes([])
-def ask(request):
+class AskView(APIView):
     """
-    Financial research and explanation endpoint.
-    Orchestrates pre-flight guardrails, deterministic tools, RAG filing retrieval,
-    session memory, and strict output validation with Pydantic.
-    """
-    start_time = time.monotonic()
-    data = request.data or {}
-    question = data.get('question', '').strip()
-    session_id = data.get('session_id') or str(uuid.uuid4())
-    correlation_id = str(uuid.uuid4())
+        Financial research and explanation endpoint.
+        Orchestrates pre-flight guardrails, deterministic tools, RAG filing retrieval,
+        session memory, and strict output validation with Pydantic.
+        """
+    permission_classes = []
+    throttle_classes = [AnonRateThrottle]
 
-    if not question:
-        return Response(
-            {'error': "Field 'question' is required."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+    def post(self, request):
 
-    # 1. Non-negotiable Pre-flight Guardrail Check (AGENTS.md section 3 & 11)
-    guardrail_result = check_preflight_guardrail(question)
-    if guardrail_result.is_blocked:
-        latency_ms = int((time.monotonic() - start_time) * 1000)
-        refusal_payload = {
-            'answer': guardrail_result.refusal_message or STANDARD_REFUSAL_MESSAGE,
-            'refused': True,
-            'refusal_reason': guardrail_result.reason,
-            'citations': [],
-            'tool_outputs': [],
-            'warnings': ['preflight_guardrail_refusal'],
-            'token_usage': 0,
-            'correlation_id': correlation_id,
-            'latency_ms': latency_ms,
-        }
-        try:
-            validated = AgentResponse.model_validate(refusal_payload)
-        except Exception as exc:  # pragma: no cover
-            return Response(_safe_fallback(correlation_id, str(exc)))
+        start_time = time.monotonic()
+        data = request.data or {}
+        question = data.get('question', '').strip()
+        session_id = data.get('session_id') or str(uuid.uuid4())
+        correlation_id = str(uuid.uuid4())
 
-        session, _ = get_or_create_session(session_id=session_id)
-        record_user_message(session=session, content=question, correlation_id=correlation_id)
-        record_assistant_message(session=session, content=refusal_payload['answer'], correlation_id=correlation_id)
-        return Response(validated.model_dump())
-
-    # 2. MySQL Session Memory: Get or create session & save user message
-    session, _ = get_or_create_session(session_id=session_id)
-    user_msg = record_user_message(session=session, content=question, correlation_id=correlation_id)
-
-    # Fetch the last 3 Message objects for the current session_id from MySQL, ordered by -created_at
-    recent_messages = list(
-        Message.objects.filter(session=session).order_by('-created_at')[:3]
-    )
-    conversation_history = "\n".join(
-        f"{m.role.capitalize()}: {m.content}" for m in reversed(recent_messages)
-    )
-
-    # 3. Deterministic tool routing & execution
-    answer, tool_outputs, citations, warnings = route_and_execute(
-        question, conversation_history=conversation_history
-    )
-
-    # Augment with real FAISS RAG citations if filing retrieval query
-    q_lower = question.lower()
-    if any(k in q_lower for k in ['transcript', 'annual report', 'earnings call', 'filing', '5g', 'capex', 'contingencies', 'software']):
-        real_filing_res = search_filings(question, top_k=2)
-        for c in real_filing_res.get('citations', []):
-            citations.append(
-                Citation(
-                    document=c['document'],
-                    locator=c['locator'],
-                    snippet=c['snippet'],
-                    timestamp=c.get('timestamp'),
-                )
+        if not question:
+            return Response(
+                {'error': "Field 'question' is required."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-    # Augment with real MySQL fundamentals if fundamentals lookup query
-    calc_math_val, _ = calculate_math(question)
-    has_company = any(k in q_lower for k in ['reliance', 'tcs', 'infy', 'infosys'])
-    has_fund_kw = any(k in q_lower for k in ['pe ratio', 'revenue', 'debt', 'fundamentals', 'price', 'kitna', 'kya']) or any(k in conversation_history.lower() for k in ['margin', 'pe ratio', 'revenue', 'debt', 'fundamentals'])
-    if calc_math_val is None and (has_company or has_fund_kw):
-        ticker = 'RELIANCE' if 'reliance' in q_lower else ('TCS' if 'tcs' in q_lower else 'INFY')
-        real_fund = fundamentals_lookup(ticker)
-        if real_fund.get('found'):
-            # Check staleness of Bhavcopy trade date against current calendar date
-            price_data = real_fund.get('price_data') or {}
-            trade_date = price_data.get('trade_date')
-            today_str = timezone.now().date().isoformat()
-            if trade_date and trade_date != today_str:
-                staleness_msg = f"staleness_warning: Market data is from {trade_date}. Live pricing is not provided."
-                if staleness_msg not in warnings:
-                    warnings.append(staleness_msg)
+        # 1. Non-negotiable Pre-flight Guardrail Check (AGENTS.md section 3 & 11)
+        guardrail_result = check_preflight_guardrail(question)
+        if guardrail_result.is_blocked:
+            latency_ms = int((time.monotonic() - start_time) * 1000)
+            refusal_payload = {
+                'answer': guardrail_result.refusal_message or STANDARD_REFUSAL_MESSAGE,
+                'refused': True,
+                'refusal_reason': guardrail_result.reason,
+                'citations': [],
+                'tool_outputs': [],
+                'warnings': ['preflight_guardrail_refusal'],
+                'token_usage': 0,
+                'correlation_id': correlation_id,
+                'latency_ms': latency_ms,
+            }
+            try:
+                validated = AgentResponse.model_validate(refusal_payload)
+            except Exception as exc:  # pragma: no cover
+                return Response(_safe_fallback(correlation_id, str(exc)))
 
-            fund_tool = next((t for t in tool_outputs if t.tool_name == 'fundamentals_lookup'), None)
-            if fund_tool:
-                fund_tool.output['stored_mysql_data'] = real_fund
-            else:
-                tool_outputs.append(
-                    ToolOutput(
-                        tool_name='fundamentals_lookup',
-                        input={'query': question, 'ticker': ticker},
-                        output={'stored_mysql_data': real_fund, 'status': 'success'},
-                        source='mysql_fundamentals_table',
-                        timestamp=timezone.now().isoformat(),
+            session, _ = get_or_create_session(session_id=session_id)
+            record_user_message(session=session, content=question, correlation_id=correlation_id)
+            record_assistant_message(session=session, content=refusal_payload['answer'], correlation_id=correlation_id)
+            return Response(validated.model_dump())
+
+        # 2. MySQL Session Memory: Get or create session & save user message
+        session, _ = get_or_create_session(session_id=session_id)
+        user_msg = record_user_message(session=session, content=question, correlation_id=correlation_id)
+
+        # Fetch the last 3 Message objects for the current session_id from MySQL, ordered by -created_at
+        recent_messages = list(
+            Message.objects.filter(session=session).order_by('-created_at')[:3]
+        )
+        conversation_history = "\n".join(
+            f"{m.role.capitalize()}: {m.content}" for m in reversed(recent_messages)
+        )
+
+        # 3. Deterministic tool routing & execution
+        answer, tool_outputs, citations, warnings = route_and_execute(
+            question, conversation_history=conversation_history
+        )
+
+        # Augment with real FAISS RAG citations if filing retrieval query
+        q_lower = question.lower()
+        if any(k in q_lower for k in ['transcript', 'annual report', 'earnings call', 'filing', '5g', 'capex', 'contingencies', 'software']):
+            real_filing_res = search_filings(question, top_k=2)
+            for c in real_filing_res.get('citations', []):
+                citations.append(
+                    Citation(
+                        document=c['document'],
+                        locator=c['locator'],
+                        snippet=c['snippet'],
+                        timestamp=c.get('timestamp'),
                     )
                 )
 
-            fund_dict = real_fund.get('fundamentals') or {}
-            # If query asks about net profit margin and numbers are in fundamentals:
-            is_margin = 'margin' in q_lower or 'margin' in conversation_history.lower()
-            if calc_math_val is None and is_margin and fund_dict.get('net_profit_cr') and fund_dict.get('revenue_cr'):
-                np_cr = float(fund_dict['net_profit_cr'])
-                rev_cr = float(fund_dict['revenue_cr'])
-                margin_val = round((np_cr / rev_cr) * 100, 2)
-                calc_tool = next((t for t in tool_outputs if t.tool_name == 'financial_calculator'), None)
-                calc_payload = {
-                    'formula': '(net_profit / revenue) * 100',
-                    'net_profit': np_cr,
-                    'revenue': rev_cr,
-                    'result_percent': margin_val,
-                }
-                if calc_tool:
-                    calc_tool.output = calc_payload
+        # Augment with real MySQL fundamentals if fundamentals lookup query
+        calc_math_val, _ = calculate_math(question)
+        has_company = any(k in q_lower for k in ['reliance', 'tcs', 'infy', 'infosys'])
+        has_fund_kw = any(k in q_lower for k in ['pe ratio', 'revenue', 'debt', 'fundamentals', 'price', 'kitna', 'kya']) or any(k in conversation_history.lower() for k in ['margin', 'pe ratio', 'revenue', 'debt', 'fundamentals'])
+        if calc_math_val is None and (has_company or has_fund_kw):
+            ticker = 'RELIANCE' if 'reliance' in q_lower else ('TCS' if 'tcs' in q_lower else 'INFY')
+            real_fund = fundamentals_lookup(ticker)
+            if real_fund.get('found'):
+                # Check staleness of Bhavcopy trade date against current calendar date
+                price_data = real_fund.get('price_data') or {}
+                trade_date = price_data.get('trade_date')
+                today_str = timezone.now().date().isoformat()
+                if trade_date and trade_date != today_str:
+                    staleness_msg = f"staleness_warning: Market data is from {trade_date}. Live pricing is not provided."
+                    if staleness_msg not in warnings:
+                        warnings.append(staleness_msg)
+
+                fund_tool = next((t for t in tool_outputs if t.tool_name == 'fundamentals_lookup'), None)
+                if fund_tool:
+                    fund_tool.output['stored_mysql_data'] = real_fund
                 else:
                     tool_outputs.append(
                         ToolOutput(
-                            tool_name='financial_calculator',
-                            input={'formula': '(net_profit / revenue) * 100', 'net_profit': np_cr, 'revenue': rev_cr},
-                            output=calc_payload,
-                            source='deterministic_calculator_v1',
+                            tool_name='fundamentals_lookup',
+                            input={'query': question, 'ticker': ticker},
+                            output={'stored_mysql_data': real_fund, 'status': 'success'},
+                            source='mysql_fundamentals_table',
                             timestamp=timezone.now().isoformat(),
                         )
                     )
-                if not is_hinglish_or_hindi(question):
-                    answer = (
-                        f"The calculated net profit margin for {ticker} is {margin_val}% "
-                        f"(based on recorded revenue of ₹{rev_cr:,.0f} crore and net profit of ₹{np_cr:,.0f} crore from corporate filings)."
-                    )
 
-            # If user asked for price right now / current price, construct a precise factual response
-            if any(p in q_lower for p in ['price right now', 'current price', 'live price', "today's price"]):
-                closing_price = price_data.get('closing_price')
-                if closing_price is not None:
-                    answer = (
-                        f"The last recorded closing price for {ticker} is ₹{closing_price:,.2f} "
-                        f"as of trade date {trade_date}. Note that live pricing is not provided."
-                    )
-            elif is_hinglish_or_hindi(question):
-                if 'margin' in q_lower and fund_dict.get('net_profit_cr') and fund_dict.get('revenue_cr'):
-                    answer = (
-                        f"Stored database records ke anusaar, {ticker} ka recorded revenue ₹{float(fund_dict['revenue_cr']):,.0f} crore "
-                        f"aur net profit ₹{float(fund_dict['net_profit_cr']):,.0f} crore hai. Deterministic financial_calculator ke anusaar "
-                        f"net profit margin {margin_val}% (operating margin {fund_dict.get('operating_margin_pct')}%) hai."
-                    )
-                elif fund_dict.get('revenue_cr') and (fund_dict.get('debt_cr') or fund_dict.get('debt_to_equity') is not None):
-                    debt_str = f"aur debt ₹{float(fund_dict['debt_cr']):,.0f} crore" if fund_dict.get('debt_cr') else f"aur debt-to-equity ratio {fund_dict.get('debt_to_equity')}"
-                    answer = (
-                        f"Stored database records ke anusaar, {ticker} ka recorded revenue ₹{float(fund_dict['revenue_cr']):,.0f} crore "
-                        f"{debt_str} hai."
-                    )
+                fund_dict = real_fund.get('fundamentals') or {}
+                # If query asks about net profit margin and numbers are in fundamentals:
+                is_margin = 'margin' in q_lower or 'margin' in conversation_history.lower()
+                if calc_math_val is None and is_margin and fund_dict.get('net_profit_cr') and fund_dict.get('revenue_cr'):
+                    np_cr = float(fund_dict['net_profit_cr'])
+                    rev_cr = float(fund_dict['revenue_cr'])
+                    margin_val = round((np_cr / rev_cr) * 100, 2)
+                    calc_tool = next((t for t in tool_outputs if t.tool_name == 'financial_calculator'), None)
+                    calc_payload = {
+                        'formula': '(net_profit / revenue) * 100',
+                        'net_profit': np_cr,
+                        'revenue': rev_cr,
+                        'result_percent': margin_val,
+                    }
+                    if calc_tool:
+                        calc_tool.output = calc_payload
+                    else:
+                        tool_outputs.append(
+                            ToolOutput(
+                                tool_name='financial_calculator',
+                                input={'formula': '(net_profit / revenue) * 100', 'net_profit': np_cr, 'revenue': rev_cr},
+                                output=calc_payload,
+                                source='deterministic_calculator_v1',
+                                timestamp=timezone.now().isoformat(),
+                            )
+                        )
+                    if not is_hinglish_or_hindi(question):
+                        answer = (
+                            f"The calculated net profit margin for {ticker} is {margin_val}% "
+                            f"(based on recorded revenue of ₹{rev_cr:,.0f} crore and net profit of ₹{np_cr:,.0f} crore from corporate filings)."
+                        )
+
+                # If user asked for price right now / current price, construct a precise factual response
+                if any(p in q_lower for p in ['price right now', 'current price', 'live price', "today's price"]):
+                    closing_price = price_data.get('closing_price')
+                    if closing_price is not None:
+                        answer = (
+                            f"The last recorded closing price for {ticker} is ₹{closing_price:,.2f} "
+                            f"as of trade date {trade_date}. Note that live pricing is not provided."
+                        )
+                elif is_hinglish_or_hindi(question):
+                    if 'margin' in q_lower and fund_dict.get('net_profit_cr') and fund_dict.get('revenue_cr'):
+                        answer = (
+                            f"Stored database records ke anusaar, {ticker} ka recorded revenue ₹{float(fund_dict['revenue_cr']):,.0f} crore "
+                            f"aur net profit ₹{float(fund_dict['net_profit_cr']):,.0f} crore hai. Deterministic financial_calculator ke anusaar "
+                            f"net profit margin {margin_val}% (operating margin {fund_dict.get('operating_margin_pct')}%) hai."
+                        )
+                    elif fund_dict.get('revenue_cr') and (fund_dict.get('debt_cr') or fund_dict.get('debt_to_equity') is not None):
+                        debt_str = f"aur debt ₹{float(fund_dict['debt_cr']):,.0f} crore" if fund_dict.get('debt_cr') else f"aur debt-to-equity ratio {fund_dict.get('debt_to_equity')}"
+                        answer = (
+                            f"Stored database records ke anusaar, {ticker} ka recorded revenue ₹{float(fund_dict['revenue_cr']):,.0f} crore "
+                            f"{debt_str} hai."
+                        )
 
 
-    # 4. Record every ToolCall in MySQL
-    for t in tool_outputs:
-        record_tool_call(
-            message=user_msg,
-            tool_name=t.tool_name,
-            input_args=t.input if isinstance(t.input, dict) else {'query': question},
-            output_result=t.output,
-            latency_ms=10,
-            correlation_id=correlation_id,
+        # 4. Record every ToolCall in MySQL
+        for t in tool_outputs:
+            record_tool_call(
+                message=user_msg,
+                tool_name=t.tool_name,
+                input_args=t.input if isinstance(t.input, dict) else {'query': question},
+                output_result=t.output,
+                latency_ms=10,
+                correlation_id=correlation_id,
+            )
+
+        # 5. Hybrid LLM Synthesis (AGENTS.md sections 1, 2, 6)
+        synthesized_answer, llm_tokens, _, llm_warnings = synthesize_research_answer(
+            question=question,
+            tool_outputs=tool_outputs,
+            citations=citations,
+            default_answer=answer,
+            conversation_history=conversation_history,
         )
+        if llm_warnings:
+            warnings.extend(llm_warnings)
 
-    # 5. Hybrid LLM Synthesis (AGENTS.md sections 1, 2, 6)
-    synthesized_answer, llm_tokens, _, llm_warnings = synthesize_research_answer(
-        question=question,
-        tool_outputs=tool_outputs,
-        citations=citations,
-        default_answer=answer,
-        conversation_history=conversation_history,
-    )
-    if llm_warnings:
-        warnings.extend(llm_warnings)
+        # 6. Post-flight Guardrail Check (guarantees zero advice/predictions in output)
+        post_check = check_postflight_guardrail(synthesized_answer)
+        if post_check.is_blocked:
+            refusal_payload = {
+                'answer': post_check.refusal_message or STANDARD_REFUSAL_MESSAGE,
+                'refused': True,
+                'refusal_reason': post_check.reason or 'postflight_guardrail_refusal',
+                'citations': [],
+                'tool_outputs': [],
+                'warnings': ['postflight_guardrail_refusal'],
+                'token_usage': 0,
+                'correlation_id': correlation_id,
+                'latency_ms': int((time.monotonic() - start_time) * 1000),
+            }
+            validated = AgentResponse.model_validate(refusal_payload)
+            record_assistant_message(session=session, content=refusal_payload['answer'], correlation_id=correlation_id)
+            return Response(validated.model_dump())
 
-    # 6. Post-flight Guardrail Check (guarantees zero advice/predictions in output)
-    post_check = check_postflight_guardrail(synthesized_answer)
-    if post_check.is_blocked:
-        refusal_payload = {
-            'answer': post_check.refusal_message or STANDARD_REFUSAL_MESSAGE,
-            'refused': True,
-            'refusal_reason': post_check.reason or 'postflight_guardrail_refusal',
-            'citations': [],
-            'tool_outputs': [],
-            'warnings': ['postflight_guardrail_refusal'],
-            'token_usage': 0,
+        token_usage = llm_tokens if llm_tokens > 0 else (45 if tool_outputs else 0)
+        latency_ms = int((time.monotonic() - start_time) * 1000)
+
+        payload = {
+            'answer': synthesized_answer,
+            'refused': False,
+            'refusal_reason': None,
+            'citations': citations,
+            'tool_outputs': tool_outputs,
+            'warnings': warnings,
+            'token_usage': token_usage,
             'correlation_id': correlation_id,
-            'latency_ms': int((time.monotonic() - start_time) * 1000),
+            'latency_ms': latency_ms,
         }
-        validated = AgentResponse.model_validate(refusal_payload)
-        record_assistant_message(session=session, content=refusal_payload['answer'], correlation_id=correlation_id)
+
+        try:
+            validated = AgentResponse.model_validate(payload)
+        except Exception as exc:  # pragma: no cover
+            return Response(_safe_fallback(correlation_id, str(exc)))
+
+        # Persist assistant message and token usage in MySQL
+        record_assistant_message(session=session, content=synthesized_answer, correlation_id=correlation_id)
+        add_session_token_usage(session=session, tokens=token_usage)
+
         return Response(validated.model_dump())
 
-    token_usage = llm_tokens if llm_tokens > 0 else (45 if tool_outputs else 0)
-    latency_ms = int((time.monotonic() - start_time) * 1000)
 
-    payload = {
-        'answer': synthesized_answer,
-        'refused': False,
-        'refusal_reason': None,
-        'citations': citations,
-        'tool_outputs': tool_outputs,
-        'warnings': warnings,
-        'token_usage': token_usage,
-        'correlation_id': correlation_id,
-        'latency_ms': latency_ms,
-    }
 
-    try:
-        validated = AgentResponse.model_validate(payload)
-    except Exception as exc:  # pragma: no cover
-        return Response(_safe_fallback(correlation_id, str(exc)))
-
-    # Persist assistant message and token usage in MySQL
-    record_assistant_message(session=session, content=synthesized_answer, correlation_id=correlation_id)
-    add_session_token_usage(session=session, tokens=token_usage)
-
-    return Response(validated.model_dump())
-
+ask = AskView.as_view()
 
 @api_view(['DELETE'])
 @permission_classes([])

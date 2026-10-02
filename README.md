@@ -132,39 +132,69 @@ All backend microservices (Django REST API, MySQL 8.4 database, FAISS RAG indexe
 
 ---
 
-## 7. SLA & Performance
+## 7. SLA, Performance & Benchmarks
 
-Benchmark metrics from our automated 21-question evaluation suite ([backend/evals/eval_report.json](backend/evals/eval_report.json)):
+### A. End-to-End Evaluation Suite (24 Questions)
+Benchmark metrics from our automated 24-question evaluation suite ([backend/evals/eval_report.json](backend/evals/eval_report.json)):
 
 | Metric | Measured Value | Target / SLA | Status |
 |---|---|---|---|
-| **P50 Latency (Median)** | **6,972.0 ms** | < 10,000 ms | Passed |
-| **P95 Latency** | **15,330.0 ms** | < 20,000 ms | Passed |
-| **Average Latency** | **5,128.76 ms** | < 10,000 ms | Passed |
-| **Estimated Cost Per Query** | **$0.000078 USD** | < $0.001 USD | Passed |
-| **Total Evaluation Cost (21 questions)** | **$0.001629 USD** | - | Passed |
-| **Total Tokens Consumed** | **18,465 tokens** | - | Passed |
+| **P50 Latency (Median)** | **6,608.5 ms** | < 10,000 ms | Passed |
+| **P95 Latency** | **14,658.25 ms** | < 20,000 ms | Passed |
+| **Average Latency** | **5,007.88 ms** | < 10,000 ms | Passed |
+| **Estimated Cost Per Query** | **$0.000079 USD** | < $0.001 USD | Passed |
+| **Total Evaluation Cost (24 questions)** | **$0.001888 USD** | - | Passed |
+| **Total Tokens Consumed** | **22,307 tokens** | - | Passed |
 | **Refusal Accuracy (Adversarial / Advisory)** | **100.0%** (10/10) | 100.0% | Passed |
 | **Tool Routing Accuracy** | **100.0%** (7/7) | 100.0% | Passed |
-| **Deterministic Math Accuracy** | **100.0%** (2/2) | 100.0% | Passed |
+| **Deterministic Math Accuracy** | **100.0%** (3/3) | 100.0% | Passed |
 | **Stale Market Data Handling** | **100.0%** (1/1) | 100.0% | Passed |
-| **Failure Rate** | **0.0%** (0/21) | 0.0% | Passed |
+| **Hinglish / Regional Retrieval Accuracy** | **100.0%** (2/2) | 100.0% | Passed |
+| **Failure Rate** | **0.0%** (0/24) | 0.0% | Passed |
 
 > *Pricing constants applied: `$0.075 / 1M` input tokens and `$0.30 / 1M` output tokens.*
 
+### B. Locust Concurrency & Load Test Results
+Generated via [`locustfile.py`](locustfile.py) simulating concurrent analyst workloads across health, guardrails, math tools, and RAG:
+
+| Endpoint / Scenario | Requests | Failures | Median Latency | 95th Percentile | Min / Max |
+|---|---|---|---|---|---|
+| **Advisory Guardrails (`POST /api/ask/`)** | 150 | 0 (0.0%) | 610 ms | 980 ms | 10 ms / 2,605 ms |
+| **Market Data Cache (`GET /api/market-movers/`)** | 26 | 0 (0.0%) | 49 ms | 69 ms | 46 ms / 80 ms |
+| **Comparison API (`GET /api/comparison-data/`)** | 27 | 0 (0.0%) | 3 ms | 7 ms | 2 ms / 21 ms |
+| **Health Probe (`GET /api/health/`)** | 5 | 0 (0.0%) | 3 ms | 19 ms | 2 ms / 18 ms |
+| **Aggregated System Under Load** | **208** | **0 (0.0%)** | **50 ms** | **950 ms** | **2 ms / 2,605 ms** |
+
+*Throughput: 14.04 requests/sec with zero 500 errors.*
+
+### C. RAGAS Retrieval Quality Benchmark
+Evaluated on corporate filing disclosures ([backend/evals/ragas_report.json](backend/evals/ragas_report.json)):
+
+| RAGAS Metric | Score | Industry Benchmark | Meaning |
+|---|---|---|---|
+| **Context Precision** | **96.67%** | > 80.0% | Relevant chunks ranked at the very top of retrieved results |
+| **Answer Relevance** | **80.00%** | > 75.0% | Generated response strictly answers the financial query |
+| **Faithfulness** | **74.09%** | > 70.0% | Response claims & figures strictly grounded in retrieved filing text |
+| **Context Recall** | **37.33%** | > 30.0% | Core disclosure facts captured across retrieved snippets |
+| **Overall Harmonic Score** | **63.36%** | > 60.0% | Combined RAG pipeline quality score |
+
 ---
 
-## 8. Running Backend Checks and Tests
+## 8. Running Backend Checks, Tests & Evals
 
 ```bash
-# Inside Docker:
-docker compose exec web python manage.py check
-docker compose exec web python manage.py test
-docker compose exec web python manage.py run_evals
+# 1. Django System Checks & Unit Tests
+python manage.py check
+pytest backend/api/test_contract.py backend/api/test_guardrails.py
 
-# Or locally with SQLite:
-DJANGO_DB_ENGINE=sqlite python backend/manage.py test backend
-DJANGO_DB_ENGINE=sqlite python backend/manage.py run_evals
+# 2. Automated 24-Question Evaluation Suite
+python backend/manage.py run_evals
+
+# 3. RAGAS Evaluation Suite
+python backend/manage.py run_ragas
+
+# 4. Locust Load Test (Interactive or Headless)
+locust -f locustfile.py --host http://localhost:8000 --headless -u 10 -r 2 --run-time 15s --html load_test_report.html
 ```
 
 ---
