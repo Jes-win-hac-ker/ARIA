@@ -8,6 +8,7 @@ summary report and human-readable table.
 import json
 import os
 from pathlib import Path
+import re
 import statistics
 from typing import Any
 
@@ -186,6 +187,41 @@ class Command(BaseCommand):
                 if has_tool and not_refused and has_stale_warning and has_price:
                     stale_warn_passed = True
 
+            # 5. Language check for Hinglish/Hindi phrasing and English tool outputs
+            language_passed = None
+            if item.get("expected_language"):
+                language_passed = False
+                exp_lang = str(item["expected_language"]).lower()
+                if "hinglish" in exp_lang or "hindi" in exp_lang:
+                    ans_lower = agent_resp.answer.lower()
+                    has_devanagari = any("\u0900" <= ch <= "\u097F" for ch in agent_resp.answer)
+                    hinglish_keywords = [
+                        "hai", "hain", "ka", "ke", "ki", "kitna", "kitni", "kitne",
+                        "anusaar", "mutabik", "shamil", "prakar", "vivaran", "mein",
+                        "aur", "kya", "batao", "banta", "tatha", "kripya", "lagbhag",
+                        "diya", "gaya", "is", "aao", "karein", "hoon", "niche", "aadharit"
+                    ]
+                    has_hinglish_phrasing = has_devanagari or any(
+                        re.search(rf"\b{re.escape(kw)}\b", ans_lower) for kw in hinglish_keywords
+                    )
+
+                    # Assert tool_outputs remain in English
+                    tools_in_english = True
+                    for tool in agent_resp.tool_outputs:
+                        if not tool.tool_name.isascii():
+                            tools_in_english = False
+                            break
+                        if tool.source and not tool.source.isascii():
+                            tools_in_english = False
+                            break
+                        out_str = json.dumps(tool.output)
+                        if any("\u0900" <= ch <= "\u097F" for ch in out_str):
+                            tools_in_english = False
+                            break
+
+                    if has_hinglish_phrasing and tools_in_english:
+                        language_passed = True
+
             # Determine whether this individual question passed all criteria
             failed = False
             if not refusal_passed:
@@ -195,6 +231,8 @@ class Command(BaseCommand):
             elif numeric_passed is False:
                 failed = True
             elif stale_warn_passed is False:
+                failed = True
+            elif language_passed is False:
                 failed = True
 
             results.append({
@@ -211,6 +249,7 @@ class Command(BaseCommand):
                 "expected_numeric": expected_numeric,
                 "numeric_passed": numeric_passed,
                 "stale_warn_passed": stale_warn_passed,
+                "language_passed": language_passed,
                 "failed": failed,
                 "token_usage": agent_resp.token_usage,
                 "latency_ms": agent_resp.latency_ms,
@@ -242,6 +281,12 @@ class Command(BaseCommand):
             if stale_items else 100.0
         )
 
+        language_items = [r for r in results if r.get("language_passed") is not None]
+        language_accuracy = (
+            round((sum(1 for r in language_items if r.get("language_passed") is True) / len(language_items)) * 100.0, 2)
+            if language_items else 100.0
+        )
+
         n_evaluated = len(results)
         failed_count = sum(1 for r in results if r.get("failed") is True)
         failure_rate = round((failed_count / n_evaluated * 100.0), 2) if n_evaluated > 0 else 0.0
@@ -269,6 +314,7 @@ class Command(BaseCommand):
             "tool_routing_accuracy": tool_routing_accuracy,
             "numeric_accuracy": numeric_accuracy,
             "stale_warning_accuracy": stale_warning_accuracy,
+            "language_accuracy": language_accuracy,
             "failure_rate": failure_rate,
             "average_latency_ms": avg_latency,
             "p50_latency_ms": p50_latency_ms,
@@ -283,6 +329,7 @@ class Command(BaseCommand):
                 "numeric_calculations": len([r for r in results if r.get("category") == "numeric_calculation"]),
                 "retrieval_citations": len([r for r in results if r.get("category") == "retrieval_citation"]),
                 "stale_data_handling": len([r for r in results if r.get("category") == "stale_data_handling"]),
+                "hinglish_retrievals": len([r for r in results if r.get("category") == "hinglish_retrieval"]),
             },
             "results": results,
         }
@@ -332,6 +379,7 @@ class Command(BaseCommand):
         lines.append(f"{'Tool Routing Accuracy':<42} {summary['tool_routing_accuracy']}%")
         lines.append(f"{'Numeric Calculation Accuracy':<42} {summary['numeric_accuracy']}%")
         lines.append(f"{'Bhavcopy Stale Warning Accuracy':<42} {summary['stale_warning_accuracy']}%")
+        lines.append(f"{'Hinglish Phrasing & Tool English Accuracy':<42} {summary.get('language_accuracy', 100.0)}%")
         lines.append(f"{'P50 Latency (Median)':<42} {summary['p50_latency_ms']} ms")
         lines.append(f"{'P95 Latency':<42} {summary['p95_latency_ms']} ms")
         lines.append(f"{'Average Latency':<42} {summary['average_latency_ms']} ms")

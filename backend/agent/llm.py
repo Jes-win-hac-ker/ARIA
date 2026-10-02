@@ -8,6 +8,7 @@ Core Principle:
 """
 import json
 import os
+import re
 import time
 import urllib.error
 import urllib.parse
@@ -25,7 +26,9 @@ STRICT CONSTRAINTS (Non-negotiable compliance):
 3. Every factual statement must cite its source document or tool output. Explicitly include page numbers or sections when referencing filings.
 4. If the provided context does not contain the answer, state clearly that the corporate disclosures do not provide this information.
 5. Keep your tone objective, professional, and audit-ready.
+6. You must reply in the exact same language and script (English, Hindi, or Hinglish) that the user used in their prompt. If the user asked in Hinglish, reply in Hinglish. Do not translate the proper nouns of the tools or the exact numerical figures.
 """
+
 
 
 def _build_context_prompt(
@@ -160,6 +163,19 @@ def _call_ollama_api(
     return None, 0
 
 
+def is_hinglish_or_hindi(text: str) -> bool:
+    """Detect whether a query is written in Hindi or Hinglish."""
+    if any("\u0900" <= ch <= "\u097F" for ch in text):
+        return True
+    hinglish_markers = {
+        "ka", "ke", "ki", "kya", "kyu", "kyun", "kitna", "kitni", "kitne",
+        "hai", "hain", "karo", "batao", "bataiye", "dekh", "dekho",
+        "anusaar", "mein", "se", "ko", "par", "bhi", "aur", "ya", "yeh", "woh"
+    }
+    tokens = set(re.findall(r"\b[a-zA-Z]+\b", text.lower()))
+    return bool(tokens & hinglish_markers)
+
+
 def synthesize_research_answer(
     question: str,
     tool_outputs: list[ToolOutput],
@@ -219,11 +235,49 @@ def synthesize_research_answer(
 
     fallback_warning = ["llm_offline_fallback: network_unreachable_grounded_fallback"]
     fallback_text = default_answer
-    if not tool_outputs and not citations:
+
+    if is_hinglish_or_hindi(question):
+        if tool_outputs:
+            details = []
+            co_name = "Company"
+            q_lower = question.lower()
+            if "tcs" in q_lower:
+                co_name = "Tata Consultancy Services (TCS)"
+            elif "reliance" in q_lower:
+                co_name = "Reliance Industries Limited"
+            elif "infy" in q_lower:
+                co_name = "Infosys Limited"
+
+            for t in tool_outputs:
+                if t.tool_name == "financial_calculator" and isinstance(t.output, dict):
+                    if "result_percent" in t.output:
+                        details.append(f"net profit margin {t.output['result_percent']}%")
+                elif t.tool_name == "fundamentals_lookup" and isinstance(t.output, dict):
+                    fund = t.output.get("fundamentals") or t.output.get("stored_mysql_data", {}).get("fundamentals") or t.output.get("data")
+                    if isinstance(fund, dict):
+                        if "operating_margin_pct" in fund and not any("margin" in d for d in details):
+                            details.append(f"operating margin {fund['operating_margin_pct']}%")
+                        if "revenue_cr" in fund:
+                            details.append(f"recorded revenue ₹{fund['revenue_cr']:,.0f} crore")
+                        if "debt_cr" in fund:
+                            details.append(f"recorded debt ₹{fund['debt_cr']:,.0f} crore")
+                        elif "FY24_debt_cr" in fund:
+                            details.append(f"recorded debt ₹{fund['FY24_debt_cr']:,.0f} crore")
+
+            if details:
+                fallback_text = (
+                    f"Stored database records ke anusaar, {co_name} ka "
+                    + " aur ".join(details)
+                    + " hai. Proper nouns aur numeric figures deterministic tool outputs par aadharit hain."
+                )
+            else:
+                fallback_text = f"Stored database records ke anusaar: {default_answer}"
+    elif not tool_outputs and not citations:
         fallback_text = (
             "Live LLM services are currently unreachable, and no deterministic tool or filing matched this query. "
             "Please provide a financial research query referencing filings, financial ratios, or stock fundamentals."
         )
 
     return fallback_text, enforced_tokens, latency_ms, fallback_warning
+
 

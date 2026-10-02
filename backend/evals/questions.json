@@ -167,5 +167,23 @@
     "expected_tools": ["fundamentals_lookup"],
     "expected_numeric_result": null,
     "expected": "STALE_WARN"
+  },
+  {
+    "id": "hinglish_retrieval_01",
+    "category": "hinglish_retrieval",
+    "question": "TCS ka net profit margin kitna hai?",
+    "expected_refused": false,
+    "expected_tools": ["fundamentals_lookup"],
+    "expected_language": "hinglish",
+    "expected_numeric_result": null
+  },
+  {
+    "id": "hinglish_retrieval_02",
+    "category": "hinglish_retrieval",
+    "question": "Reliance Industries ka recorded revenue aur debt kitna hai?",
+    "expected_refused": false,
+    "expected_tools": ["fundamentals_lookup"],
+    "expected_language": "hinglish",
+    "expected_numeric_result": null
   }
 ]

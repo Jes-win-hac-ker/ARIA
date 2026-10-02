@@ -25,8 +25,8 @@ from agent.guardrails import (
     check_postflight_guardrail,
     check_preflight_guardrail,
 )
-from agent.llm import synthesize_research_answer
-from agent.router import route_and_execute
+from agent.llm import is_hinglish_or_hindi, synthesize_research_answer
+from agent.router import calculate_math, route_and_execute
 from agent.tools import financial_calculator, fundamentals_lookup, search_filings
 from .memory import (
     add_session_token_usage,
@@ -239,7 +239,10 @@ def ask(request):
             )
 
     # Augment with real MySQL fundamentals if fundamentals lookup query
-    if any(k in q_lower for k in ['reliance', 'tcs', 'infy', 'infosys', 'pe ratio', 'revenue', 'debt', 'fundamentals', 'price']):
+    calc_math_val, _ = calculate_math(question)
+    has_company = any(k in q_lower for k in ['reliance', 'tcs', 'infy', 'infosys'])
+    has_fund_kw = any(k in q_lower for k in ['pe ratio', 'revenue', 'debt', 'fundamentals', 'price', 'kitna', 'kya'])
+    if has_company or (calc_math_val is None and has_fund_kw):
         ticker = 'RELIANCE' if 'reliance' in q_lower else ('TCS' if 'tcs' in q_lower else 'INFY')
         real_fund = fundamentals_lookup(ticker)
         if real_fund.get('found'):
@@ -266,6 +269,32 @@ def ask(request):
                     )
                 )
 
+            fund_dict = real_fund.get('fundamentals') or {}
+            # If query asks about net profit margin and numbers are in fundamentals:
+            if calc_math_val is None and 'margin' in q_lower and fund_dict.get('net_profit_cr') and fund_dict.get('revenue_cr'):
+                np_cr = float(fund_dict['net_profit_cr'])
+                rev_cr = float(fund_dict['revenue_cr'])
+                margin_val = round((np_cr / rev_cr) * 100, 2)
+                calc_tool = next((t for t in tool_outputs if t.tool_name == 'financial_calculator'), None)
+                calc_payload = {
+                    'formula': '(net_profit / revenue) * 100',
+                    'net_profit': np_cr,
+                    'revenue': rev_cr,
+                    'result_percent': margin_val,
+                }
+                if calc_tool:
+                    calc_tool.output = calc_payload
+                else:
+                    tool_outputs.append(
+                        ToolOutput(
+                            tool_name='financial_calculator',
+                            input={'formula': '(net_profit / revenue) * 100', 'net_profit': np_cr, 'revenue': rev_cr},
+                            output=calc_payload,
+                            source='deterministic_calculator_v1',
+                            timestamp=timezone.now().isoformat(),
+                        )
+                    )
+
             # If user asked for price right now / current price, construct a precise factual response
             if any(p in q_lower for p in ['price right now', 'current price', 'live price', "today's price"]):
                 closing_price = price_data.get('closing_price')
@@ -274,6 +303,20 @@ def ask(request):
                         f"The last recorded closing price for {ticker} is ₹{closing_price:,.2f} "
                         f"as of trade date {trade_date}. Note that live pricing is not provided."
                     )
+            elif is_hinglish_or_hindi(question):
+                if 'margin' in q_lower and fund_dict.get('net_profit_cr') and fund_dict.get('revenue_cr'):
+                    answer = (
+                        f"Stored database records ke anusaar, {ticker} ka recorded revenue ₹{float(fund_dict['revenue_cr']):,.0f} crore "
+                        f"aur net profit ₹{float(fund_dict['net_profit_cr']):,.0f} crore hai. Deterministic financial_calculator ke anusaar "
+                        f"net profit margin {margin_val}% (operating margin {fund_dict.get('operating_margin_pct')}%) hai."
+                    )
+                elif fund_dict.get('revenue_cr') and (fund_dict.get('debt_cr') or fund_dict.get('debt_to_equity') is not None):
+                    debt_str = f"aur debt ₹{float(fund_dict['debt_cr']):,.0f} crore" if fund_dict.get('debt_cr') else f"aur debt-to-equity ratio {fund_dict.get('debt_to_equity')}"
+                    answer = (
+                        f"Stored database records ke anusaar, {ticker} ka recorded revenue ₹{float(fund_dict['revenue_cr']):,.0f} crore "
+                        f"{debt_str} hai."
+                    )
+
 
     # 4. Record every ToolCall in MySQL
     for t in tool_outputs:

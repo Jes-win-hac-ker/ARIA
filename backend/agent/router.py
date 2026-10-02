@@ -102,10 +102,13 @@ def route_and_execute(question: str) -> tuple[str, list[ToolOutput], list[Citati
 
     # Route 1: Calculator
     calc_result, calc_details = calculate_math(question)
-    is_explicit_calc = any(kw in lower_q for kw in ["calculate", "compute", "formula", "cagr", "debt-to-equity", "margin", "yoy", "growth percentage"])
+    has_company = any(co in lower_q for co in ["tcs", "reliance", "infy", "infosys", "hdfc"])
+    is_explicit_calc = any(kw in lower_q for kw in ["calculate", "compute", "formula", "cagr", "debt-to-equity", "yoy", "growth percentage"])
+    if not has_company and any(kw in lower_q for kw in ["margin"]):
+        is_explicit_calc = True
     is_qualitative = any(kw in lower_q for kw in ["say", "management", "transcript", "commentary", "pressure", "outlook", "guidance"])
 
-    if calc_result is not None or (is_explicit_calc and not is_qualitative):
+    if calc_result is not None or (is_explicit_calc and not is_qualitative and not has_company):
         calc_output = calc_details if calc_details else {"calculation": "deterministic_math", "query": question}
         tool_outputs.append(
             ToolOutput(
@@ -177,7 +180,8 @@ def route_and_execute(question: str) -> tuple[str, list[ToolOutput], list[Citati
         "fundamentals", "stored", "look up", "pe ratio", "recorded",
         "market cap", "revenue for infosys", "price right now", "current price",
         "live price", "today's price", "stock price", "closing price",
-        "share price", "price of", "'s price", "price"
+        "share price", "price of", "'s price", "price",
+        "kitna", "kya", "margin", "revenue", "debt"
     ]
     if any(kw in lower_q for kw in fundamentals_keywords):
         tool_outputs.append(
