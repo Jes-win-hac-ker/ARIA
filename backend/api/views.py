@@ -241,7 +241,7 @@ class AskView(APIView):
 
         # Augment with real FAISS RAG citations if filing retrieval query
         q_lower = question.lower()
-        if any(k in q_lower for k in ['transcript', 'annual report', 'earnings call', 'filing', '5g', 'capex', 'contingencies', 'software']):
+        if any(k in q_lower for k in ['transcript', 'annual report', 'earnings call', 'filing', '5g', 'capex', 'contingencies', 'software', 'risk', 'risks', 'threat', 'challenges', 'headwinds']):
             real_filing_res = search_filings(question, top_k=2)
             for c in real_filing_res.get('citations', []):
                 citations.append(

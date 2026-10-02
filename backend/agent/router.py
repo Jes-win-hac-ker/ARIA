@@ -180,7 +180,7 @@ def route_and_execute(question: str, conversation_history: str = "") -> tuple[st
     filing_keywords = [
         "transcript", "annual report", "earnings call", "auditor remarks",
         "filing", "commentary", "management", "say about", "margin pressure",
-        "pressure", "capex", "guidance", "disclosed"
+        "pressure", "capex", "guidance", "disclosed", "risk", "risks", "threat", "challenges", "headwinds"
     ]
     if any(kw in lower_q for kw in filing_keywords):
         # Query real FAISS RAG index if available
